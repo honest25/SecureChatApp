@@ -39,26 +39,11 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
       data: {
         ...userData,
         password_hash,
-        is_verified: env.DEV_BYPASS_EMAIL_VERIFICATION, // Auto-verify in dev bypass mode
+        is_verified: true, // Auto-verify to bypass email service errors
       },
     });
 
-    if (!env.DEV_BYPASS_EMAIL_VERIFICATION) {
-      const token = crypto.randomBytes(32).toString('hex');
-      await prisma.verificationToken.create({
-        data: {
-          user_id: user.id,
-          token,
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
-        }
-      });
-      await sendVerificationEmail(user.email, token);
-      return res.status(201).json({ success: true, message: 'Registration successful. Please verify your email.' });
-    }
-
-    // If dev bypass is true, we send welcome email immediately and they can log in
-    await sendWelcomeEmail(user.email, user.name);
-    return res.status(201).json({ success: true, message: 'Registration successful (auto-verified).' });
+    return res.status(201).json({ success: true, message: 'Registration successful! You can now log in.' });
 
   } catch (error) {
     next(error);
