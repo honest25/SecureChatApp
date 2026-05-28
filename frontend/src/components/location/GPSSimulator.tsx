@@ -9,9 +9,9 @@ export default function GPSSimulator() {
   const { socket } = useSocket();
   const user = useAuthStore(state => state.user);
 
-  // Initial fake coords for simulator
-  const [lat, setLat] = useState(28.7041);
-  const [lon, setLon] = useState(77.1025);
+  // Initial fake coords for simulator (safely inside Room 101)
+  const [lat, setLat] = useState(28.70415);
+  const [lon, setLon] = useState(77.10255);
 
   const simulateMove = (offsetLat: number, offsetLon: number, name: string) => {
     const newLat = lat + offsetLat;

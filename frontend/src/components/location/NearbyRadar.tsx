@@ -64,9 +64,13 @@ export default function NearbyRadar() {
     socket.emit('join_location_feed', user.hostel_name || 'Hostel 3');
 
     const handleGPSUpdate = (event: GPSLocationEvent) => {
-      // If it's my own update, just update my roomId
+      // If it's my own update, update my location and roomId so the simulator works!
       if (event.userId === user.id) {
-        setMyLocation(prev => prev ? { ...prev, roomId: event.roomId || null } : null);
+        setMyLocation(prev => ({
+          lat: event.latitude,
+          lon: event.longitude,
+          roomId: event.roomId || null,
+        }));
         return;
       }
 
@@ -104,11 +108,13 @@ export default function NearbyRadar() {
         </div>
       </div>
 
-      {error ? (
-        <div className="text-xs text-red-400 bg-red-900/20 p-3 rounded-lg border border-red-800/50">
-          {error}. Please allow Location Permissions.
+      {error && !myLocation && (
+        <div className="text-xs text-yellow-400 bg-yellow-900/20 p-3 rounded-lg border border-yellow-800/50 mb-3">
+          {error}. Using Debug Simulator.
         </div>
-      ) : !myLocation ? (
+      )}
+
+      {!myLocation ? (
         <div className="text-xs text-gray-400 animate-pulse text-center mt-10">
           Acquiring GPS satellite & Room lock...
         </div>
