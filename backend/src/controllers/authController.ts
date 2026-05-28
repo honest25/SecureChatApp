@@ -101,7 +101,9 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
         id: user.id,
         name: user.name,
         email: user.email,
-        profile_pic_url: user.profile_pic_url
+        profile_pic_url: user.profile_pic_url,
+        hostel_name: user.hostel_name,
+        room_number: user.room_number
       }
     });
   } catch (error) {

@@ -9,8 +9,10 @@ interface AuthSocket extends Socket {
   user?: { userId: string };
 }
 
+let io: Server;
+
 export const setupSocket = (httpServer: HttpServer) => {
-  const io = new Server(httpServer, {
+  io = new Server(httpServer, {
     cors: {
       origin: env.FRONTEND_URL,
       credentials: true,
@@ -59,6 +61,16 @@ export const setupSocket = (httpServer: HttpServer) => {
       socket.to(chatId).emit('stop_typing', { chatId, userId });
     });
 
+    socket.on('join_location_feed', (hostelName: string) => {
+      socket.join(`feed:${hostelName}`);
+      console.log(`[Socket] User ${userId} joined location feed for ${hostelName}`);
+    });
+
+    socket.on('leave_location_feed', (hostelName: string) => {
+      socket.leave(`feed:${hostelName}`);
+      console.log(`[Socket] User ${userId} left location feed for ${hostelName}`);
+    });
+
     socket.on('send_message', async (data) => {
       // Data: { chatId, content, type, mediaUrl }
       const message = await prisma.message.create({
@@ -82,4 +94,11 @@ export const setupSocket = (httpServer: HttpServer) => {
       socket.broadcast.emit('user_status', { userId, isOnline: false, lastSeen: new Date() });
     });
   });
+};
+
+export const getIo = () => {
+  if (!io) {
+    console.error('Socket.io is not initialized');
+  }
+  return io;
 };

@@ -7,6 +7,8 @@ import Sidebar from '@/components/chat/Sidebar';
 import ChatArea from '@/components/chat/ChatArea';
 import { useSocket } from '@/hooks/useSocket';
 
+import LiveActivityFeed from '@/components/location/LiveActivityFeed';
+
 export default function ChatLayout() {
   const router = useRouter();
   const { isAuthenticated, checkAuth } = useAuthStore();
@@ -38,6 +40,10 @@ export default function ChatLayout() {
       <div className="flex-1 flex max-w-[1600px] mx-auto bg-gray-900 shadow-2xl overflow-hidden w-full h-full">
         <Sidebar />
         <ChatArea />
+        {/* Right Sidebar: Location Tracking System */}
+        <div className="w-80 hidden lg:flex flex-col border-l border-gray-800 p-4 bg-gray-950">
+           <LiveActivityFeed />
+        </div>
       </div>
     </div>
   );

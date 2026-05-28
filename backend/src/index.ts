@@ -12,6 +12,7 @@ import { startCronJobs } from './services/cronService';
 import authRoutes from './routes/authRoutes';
 import userRoutes from './routes/userRoutes';
 import chatRoutes from './routes/chatRoutes';
+import locationRoutes from './routes/locationRoutes';
 
 const app: Express = express();
 const httpServer = createServer(app);
@@ -34,6 +35,7 @@ app.use('/uploads', express.static('public/uploads'));
 app.use('/auth', authRoutes);
 app.use('/user', userRoutes);
 app.use('/chat', chatRoutes);
+app.use('/location', locationRoutes);
 
 // Health check route
 app.get('/', (req, res) => {

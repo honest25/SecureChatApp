@@ -7,6 +7,8 @@ interface User {
   name: string;
   email: string;
   profile_pic_url?: string;
+  hostel_name?: string;
+  room_number?: string;
 }
 
 interface AuthState {
