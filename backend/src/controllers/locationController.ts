@@ -28,20 +28,23 @@ export const updateLocation = async (req: Request, res: Response, next: NextFunc
     const roomChanged = await updateUserLocation(userId, roomId, 'WIFI');
     
     if (roomChanged) {
-      const room = await prisma.room.findUnique({ where: { id: roomId } });
+      const room = await prisma.room.findUnique({ 
+        where: { id: roomId },
+        include: { building: true, floor: true }
+      });
       const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, name: true, profile_pic_url: true } });
       
       // Emit socket event to the hostel feed
       const io = getIo();
       if (io && room && user) {
-        io.to(`feed:${room.hostel_name}`).emit('user_moved', {
+        io.to(`feed:${room.building.name}`).emit('user_moved', {
           userId: user.id,
           userName: user.name,
           profile_pic_url: user.profile_pic_url,
           room: {
             id: room.id,
             room_number: room.room_number,
-            floor: room.floor,
+            floor: room.floor.floor_level,
             name: room.name
           },
           action: 'ENTERED',
@@ -65,7 +68,10 @@ export const manualCheckIn = async (req: Request, res: Response, next: NextFunct
     // For now, assume it's just the room_id for testing purposes.
     const roomId = qrCodeToken; 
 
-    const room = await prisma.room.findUnique({ where: { id: roomId } });
+    const room = await prisma.room.findUnique({ 
+      where: { id: roomId },
+      include: { building: true, floor: true }
+    });
     if (!room) return res.status(404).json({ success: false, message: 'Invalid QR code or room' });
 
     const roomChanged = await updateUserLocation(userId, roomId, 'QR');
@@ -74,11 +80,11 @@ export const manualCheckIn = async (req: Request, res: Response, next: NextFunct
       const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, name: true, profile_pic_url: true } });
       const io = getIo();
       if (io && user) {
-        io.to(`feed:${room.hostel_name}`).emit('user_moved', {
+        io.to(`feed:${room.building.name}`).emit('user_moved', {
           userId: user.id,
           userName: user.name,
           profile_pic_url: user.profile_pic_url,
-          room: { id: room.id, room_number: room.room_number, floor: room.floor, name: room.name },
+          room: { id: room.id, room_number: room.room_number, floor: room.floor.floor_level, name: room.name },
           action: 'ENTERED_VIA_QR',
           timestamp: new Date()
         });
@@ -137,14 +143,20 @@ export const simulateMovement = async (req: Request, res: Response, next: NextFu
       return res.status(400).json({ success: false, message: 'User not found or hostel not set' });
     }
 
+    const building = await prisma.building.findUnique({ where: { name: user.hostel_name }});
+    if (!building) {
+      return res.status(404).json({ success: false, message: 'Building not found' });
+    }
+
     // Find the room
     const room = await prisma.room.findUnique({
       where: {
-        hostel_name_room_number: {
-          hostel_name: user.hostel_name,
+        building_id_room_number: {
+          building_id: building.id,
           room_number: room_number,
         }
-      }
+      },
+      include: { floor: true }
     });
 
     if (!room) {
@@ -156,14 +168,14 @@ export const simulateMovement = async (req: Request, res: Response, next: NextFu
     if (roomChanged) {
       const io = getIo();
       if (io) {
-        io.to(`feed:${room.hostel_name}`).emit('user_moved', {
+        io.to(`feed:${user.hostel_name}`).emit('user_moved', {
           userId: user.id,
           userName: user.name,
           profile_pic_url: user.profile_pic_url,
           room: {
             id: room.id,
             room_number: room.room_number,
-            floor: room.floor,
+            floor: room.floor.floor_level,
             name: room.name
           },
           action: 'ENTERED',

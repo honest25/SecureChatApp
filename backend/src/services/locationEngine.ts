@@ -22,19 +22,25 @@ export const detectRoomFromSignals = async (signals: LocationSignal[]): Promise<
 
   // Find known beacons in DB
   const knownBeacons = await prisma.beaconMapping.findMany({
-    where: { mac_address: { in: macAddresses } },
+    where: { uuid: { in: macAddresses } },
   });
 
-  if (knownBeacons.length === 0) return null;
+  const knownWifi = await prisma.wiFiAccessPoint.findMany({
+    where: { bssid: { in: macAddresses } }
+  });
 
-  // The strongest signal that matches a known beacon determines the room
+  if (knownBeacons.length === 0 && knownWifi.length === 0) return null;
+
+  // The strongest signal that matches a known beacon/wifi determines the room
   for (const signal of sortedSignals) {
-    const matchedBeacon = knownBeacons.find(b => b.mac_address === signal.mac);
-    if (matchedBeacon) {
-      // Basic anti-spoofing / distance check: if signal is too weak, ignore it (e.g. < -85 dBm)
-      if (signal.rssi < -85) continue;
-      
-      return matchedBeacon.room_id;
+    if (signal.rssi < -85) continue;
+
+    if (signal.type === 'BLE') {
+      const matchedBeacon = knownBeacons.find(b => b.uuid === signal.mac);
+      if (matchedBeacon) return matchedBeacon.room_id;
+    } else if (signal.type === 'WIFI') {
+      const matchedWifi = knownWifi.find(w => w.bssid === signal.mac);
+      if (matchedWifi) return matchedWifi.room_id;
     }
   }
 
