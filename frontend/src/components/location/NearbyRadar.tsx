@@ -3,13 +3,22 @@
 import { useEffect, useState } from 'react';
 import { useSocket } from '@/hooks/useSocket';
 import { useAuthStore } from '@/store/useAuthStore';
-import { Compass, Navigation, MapPin } from 'lucide-react';
+import { Compass, Navigation, MapPin, Map as MapIcon, List as ListIcon } from 'lucide-react';
+import dynamic from 'next/dynamic';
+
+// Next.js dynamic import for Leaflet because it relies on window
+const LiveMap = dynamic(() => import('./LiveMap'), {
+  ssr: false,
+  loading: () => <div className="w-full h-[300px] flex items-center justify-center bg-gray-900 rounded-lg animate-pulse text-gray-500">Loading Map...</div>
+});
 
 interface RadarUser {
   userId: string;
   userName: string;
   profile_pic_url: string | null;
   gender?: string | null;
+  latitude?: number;
+  longitude?: number;
   distanceMeters: number;
   roomId?: string | null;
   roomName?: string | null;
@@ -19,9 +28,10 @@ interface RadarUser {
 
 export default function NearbyRadar() {
   const [nearbyUsers, setNearbyUsers] = useState<Map<string, RadarUser>>(new Map());
-  const [myLocation, setMyLocation] = useState<{ roomId: string | null } | null>(null);
+  const [myLocation, setMyLocation] = useState<{ lat: number, lon: number, roomId: string | null } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hasGPSLock, setHasGPSLock] = useState(false);
+  const [viewMode, setViewMode] = useState<'LIST' | 'MAP'>('LIST');
   
   const user = useAuthStore(state => state.user);
   const { socket } = useSocket();
@@ -37,7 +47,7 @@ export default function NearbyRadar() {
       (position) => {
         const coords = { lat: position.coords.latitude, lon: position.coords.longitude };
         setHasGPSLock(true);
-        if (!myLocation) setMyLocation({ roomId: null });
+        setMyLocation(prev => ({ ...coords, roomId: prev?.roomId || null }));
         
         // Emit raw GPS securely to backend. Backend handles distances.
         if (socket && user?.hostel_name) {
@@ -51,7 +61,7 @@ export default function NearbyRadar() {
     );
 
     return () => navigator.geolocation.clearWatch(watchId);
-  }, [socket, user, myLocation]);
+  }, [socket, user]);
 
   // Listen for secure distance updates
   useEffect(() => {
@@ -61,7 +71,7 @@ export default function NearbyRadar() {
 
     const handleSelfUpdate = (data: { roomId: string | null }) => {
       setHasGPSLock(true);
-      setMyLocation(prev => ({ roomId: data.roomId }));
+      setMyLocation(prev => prev ? { ...prev, roomId: data.roomId } : null);
     };
 
     const handleBulkSync = (users: RadarUser[]) => {
@@ -103,6 +113,22 @@ export default function NearbyRadar() {
           <Compass className="text-blue-400 w-5 h-5 animate-pulse" />
           <h2 className="text-sm font-semibold text-white">Live Pin-Point Radar</h2>
         </div>
+        
+        {/* View Toggle */}
+        <div className="flex bg-gray-900 rounded-lg p-1 border border-gray-700">
+          <button 
+            onClick={() => setViewMode('LIST')}
+            className={`p-1.5 rounded-md transition-colors ${viewMode === 'LIST' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}
+          >
+            <ListIcon className="w-4 h-4" />
+          </button>
+          <button 
+            onClick={() => setViewMode('MAP')}
+            className={`p-1.5 rounded-md transition-colors ${viewMode === 'MAP' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}
+          >
+            <MapIcon className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {error && !hasGPSLock && (
@@ -116,50 +142,58 @@ export default function NearbyRadar() {
           Acquiring Secure Satellite & Room lock...
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
-          {sortedNearby.length === 0 ? (
-            <div className="text-xs text-gray-500 text-center mt-10">
-              No one is nearby right now.
-            </div>
+        <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+          {viewMode === 'MAP' && myLocation ? (
+             <div className="h-full min-h-[350px]">
+               <LiveMap myLat={myLocation.lat} myLon={myLocation.lon} nearbyUsers={sortedNearby} />
+             </div>
           ) : (
-            sortedNearby.map((person) => {
-              const isSameRoom = person.roomId && myLocation?.roomId === person.roomId;
-              
-              return (
-                <div key={person.userId} className={`rounded-lg p-3 flex flex-col gap-2 shadow-sm border transition-colors ${isSameRoom ? 'bg-blue-900/20 border-blue-500/50' : 'bg-gray-900 border-gray-700/50 hover:border-gray-600'}`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs shadow-inner ${isSameRoom ? 'bg-blue-500' : 'bg-gradient-to-tr from-purple-500 to-pink-500'}`}>
-                        {person.userName[0].toUpperCase()}
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-sm text-gray-200 font-medium">
-                          {person.userName}
-                          {person.gender === 'MALE' && <span className="ml-1 text-blue-300">♂</span>}
-                          {person.gender === 'FEMALE' && <span className="ml-1 text-pink-300">♀</span>}
-                        </span>
-                        {person.roomName ? (
-                           <span className="text-xs text-green-400 flex items-center gap-1">
-                             <MapPin className="w-3 h-3" />
-                             In {person.roomName} ({person.roomNumber})
-                           </span>
-                        ) : (
-                           <span className="text-xs text-blue-400 flex items-center gap-1">
-                             <Navigation className="w-3 h-3" /> 
-                             {person.distanceMeters < 10 ? 'Right next to you' : `${person.distanceMeters}m away`}
-                           </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  {isSameRoom && (
-                    <div className="text-xs text-blue-300 bg-blue-900/40 p-1.5 rounded text-center font-medium">
-                      In the same room as you!
-                    </div>
-                  )}
+            <div className="space-y-3">
+              {sortedNearby.length === 0 ? (
+                <div className="text-xs text-gray-500 text-center mt-10">
+                  No one is nearby right now.
                 </div>
-              );
-            })
+              ) : (
+                sortedNearby.map((person) => {
+                  const isSameRoom = person.roomId && myLocation?.roomId === person.roomId;
+                  
+                  return (
+                    <div key={person.userId} className={`rounded-lg p-3 flex flex-col gap-2 shadow-sm border transition-colors ${isSameRoom ? 'bg-blue-900/20 border-blue-500/50' : 'bg-gray-900 border-gray-700/50 hover:border-gray-600'}`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs shadow-inner ${isSameRoom ? 'bg-blue-500' : 'bg-gradient-to-tr from-purple-500 to-pink-500'}`}>
+                            {person.userName[0].toUpperCase()}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-sm text-gray-200 font-medium">
+                              {person.userName}
+                              {person.gender === 'MALE' && <span className="ml-1 text-blue-300">♂</span>}
+                              {person.gender === 'FEMALE' && <span className="ml-1 text-pink-300">♀</span>}
+                            </span>
+                            {person.roomName ? (
+                               <span className="text-xs text-green-400 flex items-center gap-1">
+                                 <MapPin className="w-3 h-3" />
+                                 In {person.roomName} ({person.roomNumber})
+                               </span>
+                            ) : (
+                               <span className="text-xs text-blue-400 flex items-center gap-1">
+                                 <Navigation className="w-3 h-3" /> 
+                                 {person.distanceMeters < 10 ? 'Right next to you' : `${person.distanceMeters}m away`}
+                               </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      {isSameRoom && (
+                        <div className="text-xs text-blue-300 bg-blue-900/40 p-1.5 rounded text-center font-medium">
+                          In the same room as you!
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
           )}
         </div>
       )}

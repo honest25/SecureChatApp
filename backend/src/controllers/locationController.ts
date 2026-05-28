@@ -183,6 +183,33 @@ export const getDistance = async (req: Request, res: Response, next: NextFunctio
   }
 };
 
+export const getRooms = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId;
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.hostel_name) return res.json({ success: true, rooms: [] });
+
+    const building = await prisma.building.findUnique({ where: { name: user.hostel_name } });
+    if (!building) return res.json({ success: true, rooms: [] });
+
+    // Return all rooms and their polygons for the Floorplan Map
+    const rooms = await prisma.room.findMany({
+      where: { building_id: building.id },
+      select: {
+        id: true,
+        room_number: true,
+        name: true,
+        polygon_coordinates: true,
+        floor: { select: { floor_level: true, name: true } }
+      }
+    });
+
+    res.json({ success: true, rooms });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getRoomOccupancy = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { roomId } = req.params;
