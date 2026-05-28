@@ -16,7 +16,7 @@ export const sendVerificationEmail = async (email: string, token: string) => {
   }
 
   await resend.emails.send({
-    from: 'ChatApp <noreply@yourdomain.com>', // MUST BE verified in Resend
+    from: 'ChatApp <onboarding@resend.dev>',
     to: email,
     subject: 'Verify your email address',
     html: `<p>Please click the link below to verify your email address:</p><p><a href="${verificationLink}">Verify Email</a></p>`,
@@ -32,7 +32,7 @@ export const sendWelcomeEmail = async (email: string, name: string) => {
   if (!resend) return;
 
   await resend.emails.send({
-    from: 'ChatApp <noreply@yourdomain.com>',
+    from: 'ChatApp <onboarding@resend.dev>',
     to: email,
     subject: 'Welcome to Secure Chat App!',
     html: `<p>Hi ${name}, welcome to our secure private chat application!</p>`,
