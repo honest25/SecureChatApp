@@ -5,13 +5,14 @@ import { useChatStore } from '../store/useChatStore';
 
 export const useSocket = () => {
   const socketRef = useRef<Socket | null>(null);
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, accessToken } = useAuthStore();
   const { addMessage, updateTyping, updateUserStatus } = useChatStore();
 
   useEffect(() => {
     if (isAuthenticated && user && !socketRef.current) {
       socketRef.current = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000', {
         withCredentials: true,
+        auth: { token: accessToken }
       });
 
       const socket = socketRef.current;
