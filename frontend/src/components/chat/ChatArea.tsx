@@ -1,0 +1,193 @@
+"use client";
+
+import { useEffect, useState, useRef } from 'react';
+import { useChatStore } from '@/store/useChatStore';
+import { useAuthStore } from '@/store/useAuthStore';
+import { api } from '@/lib/axios';
+import { Send, Image as ImageIcon, Paperclip } from 'lucide-react';
+import { format } from 'date-fns';
+import { useSocket } from '@/hooks/useSocket';
+
+export default function ChatArea() {
+  const { activeChatId, chats, messages, setMessages, typingStatus } = useChatStore();
+  const { user } = useAuthStore();
+  const { sendMessage, joinChat, emitTyping, emitStopTyping } = useSocket();
+  const [inputText, setInputText] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const activeChat = chats.find(c => c.id === activeChatId);
+  const chatMessages = activeChatId ? messages[activeChatId] || [] : [];
+  const isTyping = activeChatId ? typingStatus[activeChatId] : false;
+
+  useEffect(() => {
+    if (activeChatId) {
+      joinChat(activeChatId);
+      // Fetch history if not already loaded
+      if (!messages[activeChatId]) {
+        api.get(`/chat/${activeChatId}/history`).then((res) => {
+          if (res.data.success) {
+            setMessages(activeChatId, res.data.messages);
+          }
+        });
+      }
+    }
+  }, [activeChatId]);
+
+  useEffect(() => {
+    // Scroll to bottom
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages, isTyping]);
+
+  const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputText(e.target.value);
+    
+    if (activeChatId && activeChat) {
+      emitTyping(activeChatId, activeChat.otherUser.id);
+      
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      
+      typingTimeoutRef.current = setTimeout(() => {
+        emitStopTyping(activeChatId, activeChat.otherUser.id);
+      }, 2000);
+    }
+  };
+
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputText.trim() && !file) return;
+    if (!activeChatId) return;
+
+    let mediaUrl = undefined;
+    let type: 'TEXT' | 'IMAGE' | 'FILE' = 'TEXT';
+
+    if (file) {
+      const formData = new FormData();
+      formData.append('media', file);
+      try {
+        const res = await api.post('/chat/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        mediaUrl = res.data.url;
+        type = file.type.startsWith('image/') ? 'IMAGE' : 'FILE';
+      } catch (err) {
+        console.error('File upload failed', err);
+        return;
+      }
+    }
+
+    sendMessage(activeChatId, inputText, type, mediaUrl);
+    setInputText('');
+    setFile(null);
+    if (activeChat) emitStopTyping(activeChatId, activeChat.otherUser.id);
+  };
+
+  if (!activeChat) {
+    return (
+      <div className="flex-1 bg-gray-900 flex flex-col items-center justify-center text-gray-500">
+        <div className="w-24 h-24 mb-6 opacity-20">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          </svg>
+        </div>
+        <h2 className="text-2xl font-light text-white mb-2">SecureChat Web</h2>
+        <p>Select a conversation or search for a friend to start chatting.</p>
+        <p className="mt-4 text-xs text-gray-600">Messages are end-to-end secured and auto-deleted after 7 hours.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 flex flex-col bg-gray-900 relative h-full">
+      {/* Header */}
+      <div className="h-16 px-6 bg-gray-800 border-b border-gray-700 flex items-center justify-between z-10 shadow-sm">
+        <div className="flex items-center">
+          <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold mr-4">
+            {activeChat.otherUser.name.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <h2 className="text-white font-medium">{activeChat.otherUser.name}</h2>
+            <p className="text-xs text-gray-400">
+              {activeChat.otherUser.is_online ? 'Online' : 'Offline'}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        <div className="text-center text-xs text-gray-500 my-4 bg-gray-800/50 py-2 rounded-lg mx-auto w-fit px-4 border border-gray-700">
+          Messages in this chat will auto-delete after 7 hours for security.
+        </div>
+
+        {chatMessages.map((msg) => {
+          const isMine = msg.sender_id === user?.id;
+          return (
+            <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[70%] rounded-2xl px-4 py-2 ${isMine ? 'bg-blue-600 text-white rounded-br-sm' : 'bg-gray-800 text-gray-100 border border-gray-700 rounded-bl-sm'}`}>
+                {msg.media_url && (
+                  <div className="mb-2">
+                    {msg.type === 'IMAGE' ? (
+                      <img src={msg.media_url} alt="Attachment" className="rounded-lg max-h-64 object-contain" />
+                    ) : (
+                      <a href={msg.media_url} target="_blank" rel="noreferrer" className="flex items-center text-blue-200 underline">
+                        <Paperclip className="w-4 h-4 mr-1" /> View File
+                      </a>
+                    )}
+                  </div>
+                )}
+                {msg.content && <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>}
+                <div className={`text-[10px] mt-1 text-right ${isMine ? 'text-blue-200' : 'text-gray-500'}`}>
+                  {format(new Date(msg.created_at), 'HH:mm')}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        {isTyping && (
+          <div className="flex justify-start">
+            <div className="bg-gray-800 text-gray-400 rounded-2xl rounded-bl-sm px-4 py-2 flex items-center space-x-1">
+              <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
+              <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+              <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+            </div>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input Area */}
+      <div className="p-4 bg-gray-800 border-t border-gray-700">
+        {file && (
+          <div className="mb-2 p-2 bg-gray-700 rounded-lg text-sm text-gray-300 flex items-center justify-between w-fit">
+            <span className="truncate max-w-xs">{file.name}</span>
+            <button onClick={() => setFile(null)} className="ml-4 text-red-400 hover:text-red-300">✕</button>
+          </div>
+        )}
+        <form onSubmit={handleSend} className="flex items-end space-x-2">
+          <div className="flex-1 bg-gray-700 rounded-2xl flex items-center border border-gray-600 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all overflow-hidden">
+            <label className="p-3 text-gray-400 hover:text-white cursor-pointer transition">
+              <ImageIcon className="w-5 h-5" />
+              <input type="file" className="hidden" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+            </label>
+            <input
+              type="text"
+              value={inputText}
+              onChange={handleTyping}
+              placeholder="Type a message..."
+              className="flex-1 bg-transparent text-white focus:outline-none py-3 pr-4 placeholder-gray-500"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={!inputText.trim() && !file}
+            className="p-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+          >
+            <Send className="w-5 h-5 ml-1" />
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
