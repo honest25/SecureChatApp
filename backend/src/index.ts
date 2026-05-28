@@ -7,7 +7,7 @@ import { env } from './config/env';
 import { setupSocket } from './sockets/socket';
 import { errorHandler } from './middlewares/errorHandler';
 import { startCronJobs } from './services/cronService';
-
+import { startPresenceCleanupWorker } from './workers/presenceWorker';
 // Routes
 import authRoutes from './routes/authRoutes';
 import userRoutes from './routes/userRoutes';
@@ -19,6 +19,9 @@ const httpServer = createServer(app);
 
 // Initialize WebSockets
 setupSocket(httpServer);
+
+// Start Background Workers
+startPresenceCleanupWorker();
 
 // Security Middlewares
 app.set('trust proxy', 1);

@@ -3,29 +3,25 @@
 import { useEffect, useState } from 'react';
 import { useSocket } from '@/hooks/useSocket';
 import { useAuthStore } from '@/store/useAuthStore';
-import { getDistanceInMeters } from '@/utils/distance';
 import { Compass, Navigation, MapPin } from 'lucide-react';
 
-interface GPSLocationEvent {
+interface RadarUser {
   userId: string;
   userName: string;
   profile_pic_url: string | null;
-  latitude: number;
-  longitude: number;
+  gender?: string | null;
+  distanceMeters: number;
   roomId?: string | null;
   roomName?: string | null;
   roomNumber?: string | null;
   timestamp: Date;
 }
 
-interface NearbyUser extends GPSLocationEvent {
-  distanceMeters: number;
-}
-
 export default function NearbyRadar() {
-  const [nearbyUsers, setNearbyUsers] = useState<Map<string, NearbyUser>>(new Map());
-  const [myLocation, setMyLocation] = useState<{ lat: number, lon: number, roomId: string | null } | null>(null);
+  const [nearbyUsers, setNearbyUsers] = useState<Map<string, RadarUser>>(new Map());
+  const [myLocation, setMyLocation] = useState<{ roomId: string | null } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [hasGPSLock, setHasGPSLock] = useState(false);
   
   const user = useAuthStore(state => state.user);
   const { socket } = useSocket();
@@ -40,10 +36,10 @@ export default function NearbyRadar() {
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
         const coords = { lat: position.coords.latitude, lon: position.coords.longitude };
-        // myLocation roomId updates when we receive it back from our own socket echo or keep it null until calculated
-        setMyLocation(prev => prev ? { ...prev, ...coords } : { ...coords, roomId: null });
+        setHasGPSLock(true);
+        if (!myLocation) setMyLocation({ roomId: null });
         
-        // Emit to server
+        // Emit raw GPS securely to backend. Backend handles distances.
         if (socket && user?.hostel_name) {
           socket.emit('update_gps_location', { ...coords, hostelName: user.hostel_name });
         }
@@ -55,48 +51,49 @@ export default function NearbyRadar() {
     );
 
     return () => navigator.geolocation.clearWatch(watchId);
-  }, [socket, user]);
+  }, [socket, user, myLocation]);
 
-  // Listen for others' locations
+  // Listen for secure distance updates
   useEffect(() => {
     if (!user || !socket) return;
 
     socket.emit('join_location_feed', user.hostel_name || 'Hostel 3');
 
-    const handleGPSUpdate = (event: GPSLocationEvent) => {
-      // If it's my own update, update my location and roomId so the simulator works!
-      if (event.userId === user.id) {
-        setMyLocation(prev => ({
-          lat: event.latitude,
-          lon: event.longitude,
-          roomId: event.roomId || null,
-        }));
-        return;
-      }
+    const handleSelfUpdate = (data: { roomId: string | null }) => {
+      setHasGPSLock(true);
+      setMyLocation(prev => ({ roomId: data.roomId }));
+    };
 
+    const handleBulkSync = (users: RadarUser[]) => {
       setNearbyUsers((prev) => {
         const newMap = new Map(prev);
-        // Distance will be recalculated during render
-        newMap.set(event.userId, { ...event, distanceMeters: 0 });
+        users.forEach(u => newMap.set(u.userId, u));
         return newMap;
       });
     };
 
-    socket.on('user_gps_updated', handleGPSUpdate);
+    const handleSingleUpdate = (u: RadarUser) => {
+      setNearbyUsers((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(u.userId, u);
+        return newMap;
+      });
+    };
+
+    socket.on('self_room_update', handleSelfUpdate);
+    socket.on('radar_bulk_sync', handleBulkSync);
+    socket.on('nearby_user_update', handleSingleUpdate);
 
     return () => {
-      socket.off('user_gps_updated', handleGPSUpdate);
+      socket.off('self_room_update', handleSelfUpdate);
+      socket.off('radar_bulk_sync', handleBulkSync);
+      socket.off('nearby_user_update', handleSingleUpdate);
       socket.emit('leave_location_feed', user.hostel_name || 'Hostel 3');
     };
   }, [user, socket]);
 
-  // Calculate distances and sort
   const sortedNearby = Array.from(nearbyUsers.values())
-    .map(u => ({
-      ...u,
-      distanceMeters: myLocation ? getDistanceInMeters(myLocation.lat, myLocation.lon, u.latitude, u.longitude) : 0
-    }))
-    .filter(u => myLocation ? u.distanceMeters <= 5000 : true) // Filter out people > 5km away just in case
+    .filter(u => u.distanceMeters <= 5000)
     .sort((a, b) => a.distanceMeters - b.distanceMeters);
 
   return (
@@ -108,15 +105,15 @@ export default function NearbyRadar() {
         </div>
       </div>
 
-      {error && !myLocation && (
+      {error && !hasGPSLock && (
         <div className="text-xs text-yellow-400 bg-yellow-900/20 p-3 rounded-lg border border-yellow-800/50 mb-3">
           {error}. Using Debug Simulator.
         </div>
       )}
 
-      {!myLocation ? (
+      {!hasGPSLock ? (
         <div className="text-xs text-gray-400 animate-pulse text-center mt-10">
-          Acquiring GPS satellite & Room lock...
+          Acquiring Secure Satellite & Room lock...
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
@@ -126,7 +123,7 @@ export default function NearbyRadar() {
             </div>
           ) : (
             sortedNearby.map((person) => {
-              const isSameRoom = person.roomId && myLocation.roomId === person.roomId;
+              const isSameRoom = person.roomId && myLocation?.roomId === person.roomId;
               
               return (
                 <div key={person.userId} className={`rounded-lg p-3 flex flex-col gap-2 shadow-sm border transition-colors ${isSameRoom ? 'bg-blue-900/20 border-blue-500/50' : 'bg-gray-900 border-gray-700/50 hover:border-gray-600'}`}>
@@ -136,7 +133,11 @@ export default function NearbyRadar() {
                         {person.userName[0].toUpperCase()}
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-sm text-gray-200 font-medium">{person.userName}</span>
+                        <span className="text-sm text-gray-200 font-medium">
+                          {person.userName}
+                          {person.gender === 'MALE' && <span className="ml-1 text-blue-300">♂</span>}
+                          {person.gender === 'FEMALE' && <span className="ml-1 text-pink-300">♀</span>}
+                        </span>
                         {person.roomName ? (
                            <span className="text-xs text-green-400 flex items-center gap-1">
                              <MapPin className="w-3 h-3" />

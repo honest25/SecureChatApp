@@ -111,6 +111,78 @@ export const getCurrentLocation = async (req: Request, res: Response, next: Next
   }
 };
 
+export const manualCheckOut = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId;
+    const roomChanged = await removeUserLocation(userId);
+    
+    if (roomChanged) {
+      const io = getIo();
+      const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, hostel_name: true }});
+      if (io && user && user.hostel_name) {
+        io.to(`feed:${user.hostel_name}`).emit('user_moved', {
+          userId: user.id,
+          action: 'EXITED',
+          timestamp: new Date()
+        });
+      }
+    }
+    res.json({ success: true, message: 'Checked out successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getNearbyUsers = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId;
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.hostel_name) return res.json({ success: true, nearby: [] });
+
+    // Assuming we have the coordinates of the requester in LivePresence
+    const presence = await prisma.livePresence.findUnique({ where: { user_id: userId } });
+    if (!presence || !presence.latitude || !presence.longitude) {
+      return res.json({ success: true, nearby: [] });
+    }
+
+    const { redis } = require('../config/redis');
+    const geoKey = `hostel:locations:${user.hostel_name}`;
+    const rawNearby = await redis.georadius(geoKey, presence.longitude, presence.latitude, 5000, 'm', 'WITHDIST');
+    
+    const nearby = rawNearby
+      .filter((n: any) => n[0] !== userId)
+      .map((n: any) => ({ userId: n[0], distanceMeters: Math.round(parseFloat(n[1])) }));
+
+    res.json({ success: true, nearby });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getDistance = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId;
+    const { targetUserId } = req.query;
+    
+    if (!targetUserId || typeof targetUserId !== 'string') {
+      return res.status(400).json({ success: false, message: 'Missing targetUserId' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.hostel_name) return res.status(400).json({ success: false, message: 'User hostel not set' });
+
+    const { redis } = require('../config/redis');
+    const geoKey = `hostel:locations:${user.hostel_name}`;
+    const distanceStr = await redis.geodist(geoKey, userId, targetUserId, 'm');
+
+    if (!distanceStr) return res.json({ success: true, distanceMeters: null });
+
+    res.json({ success: true, distanceMeters: Math.round(parseFloat(distanceStr)) });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getRoomOccupancy = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { roomId } = req.params;

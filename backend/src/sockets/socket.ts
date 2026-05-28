@@ -83,10 +83,8 @@ export const setupSocket = (httpServer: HttpServer) => {
         let roomNumber: string | null = null;
 
         if (building) {
-          // Use Indoor Location Engine to check if user entered a room's polygon boundary
           const { detectExactRoom } = require('../services/indoorLocationEngine');
           roomId = await detectExactRoom(data.lat, data.lon, building.id);
-          
           if (roomId) {
             const detectedRoom = await prisma.room.findUnique({ where: { id: roomId } });
             if (detectedRoom) {
@@ -112,25 +110,79 @@ export const setupSocket = (httpServer: HttpServer) => {
           }
         });
 
-        // Log movement if room changed (we should ideally track previous room in Redis, simplified here)
         if (roomId) {
             await redis.setex(`presence:user:${userId}:room`, 15 * 60, roomId);
         } else {
             await redis.del(`presence:user:${userId}:room`);
         }
 
-        // Broadcast raw GPS + Room info to others in the same hostel feed
-        io.to(`feed:${data.hostelName}`).emit('user_gps_updated', {
-          userId: user.id,
-          userName: user.name,
-          profile_pic_url: user.profile_pic_url,
-          latitude: data.lat,
-          longitude: data.lon,
-          roomId: roomId,
-          roomName: roomName,
-          roomNumber: roomNumber,
-          timestamp: new Date()
-        });
+        // 1. Save strictly to Redis GEO index for Distance calculation
+        const geoKey = `hostel:locations:${data.hostelName}`;
+        await redis.geoadd(geoKey, data.lon, data.lat, userId);
+        // Expirations for geo keys can be handled via a cleanup worker
+
+        // 2. Fetch all nearby users within 5km radius
+        const rawNearby = await redis.georadius(geoKey, data.lon, data.lat, 5000, 'm', 'WITHDIST') as unknown as [string, string][];
+        
+        // 3. Personalized Fan-out (Tell others about me, and collect them for me)
+        const radarSyncList = [];
+        
+        for (const [otherUserId, distanceStr] of rawNearby) {
+          if (otherUserId === userId) continue;
+          
+          const distanceMeters = Math.round(parseFloat(distanceStr));
+          
+          // Send personalized secure update TO the other user about me
+          io.to(otherUserId).emit('nearby_user_update', {
+            userId: user.id,
+            userName: user.name,
+            profile_pic_url: user.profile_pic_url,
+            gender: user.gender,
+            distanceMeters,
+            roomId,
+            roomName,
+            roomNumber,
+            timestamp: new Date()
+          });
+
+          radarSyncList.push({ id: otherUserId, distanceMeters });
+        }
+
+        // 4. Send bulk sync back TO ME so I know everyone's distance
+        if (radarSyncList.length > 0) {
+          const otherUserIds = radarSyncList.map(n => n.id);
+          const otherUsers = await prisma.user.findMany({ 
+            where: { id: { in: otherUserIds } },
+            select: { id: true, name: true, gender: true, profile_pic_url: true }
+          });
+          
+          const presences = await prisma.livePresence.findMany({ 
+            where: { user_id: { in: otherUserIds } },
+            include: { room: true }
+          });
+
+          const syncData = radarSyncList.map(radarUser => {
+            const u = otherUsers.find(ou => ou.id === radarUser.id);
+            const p = presences.find(op => op.user_id === radarUser.id);
+            return {
+              userId: u?.id,
+              userName: u?.name,
+              profile_pic_url: u?.profile_pic_url,
+              gender: u?.gender,
+              distanceMeters: radarUser.distanceMeters,
+              roomId: p?.room_id || null,
+              roomName: p?.room?.name || null,
+              roomNumber: p?.room?.room_number || null,
+              timestamp: p?.updated_at || new Date()
+            };
+          }).filter(u => u.userId);
+
+          io.to(userId).emit('radar_bulk_sync', syncData);
+        }
+
+        // Echo my own roomId back so my simulator/radar knows my calculated room
+        io.to(userId).emit('self_room_update', { roomId, roomName, roomNumber, timestamp: new Date() });
+
       } catch (err) {
         console.error('[Socket] Error updating GPS location', err);
       }
