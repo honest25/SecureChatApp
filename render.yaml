@@ -4,9 +4,11 @@ services:
     env: node
     plan: free
     rootDir: backend
-    buildCommand: "npm install && npm run build && npx prisma generate && npx prisma migrate deploy"
+    buildCommand: "npm install --include=dev && npm run build && npx prisma generate && npx prisma migrate deploy"
     startCommand: "npm run start"
     envVars:
+      - key: NODE_VERSION
+        value: "20"
       - key: NODE_ENV
         value: production
       - key: PORT
