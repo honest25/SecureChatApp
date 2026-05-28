@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polygon, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Compass, User, Users } from 'lucide-react';
-import api from '@/utils/api';
+import { Compass } from 'lucide-react';
+import { api } from '@/lib/axios';
 
 // Create a custom icon for the current user
 const myIcon = new L.DivIcon({
@@ -45,10 +45,23 @@ const MapCenterer = ({ center }: { center: [number, number] }) => {
   return null;
 };
 
+interface LiveMapRadarUser {
+  userId: string;
+  userName: string;
+  profile_pic_url: string | null;
+  gender?: string | null;
+  latitude?: number;
+  longitude?: number;
+  distanceMeters: number;
+  roomId?: string | null;
+  roomName?: string | null;
+  roomNumber?: string | null;
+}
+
 interface LiveMapProps {
   myLat: number;
   myLon: number;
-  nearbyUsers: any[];
+  nearbyUsers: LiveMapRadarUser[];
 }
 
 export default function LiveMap({ myLat, myLon, nearbyUsers }: LiveMapProps) {
@@ -62,17 +75,17 @@ export default function LiveMap({ myLat, myLon, nearbyUsers }: LiveMapProps) {
         const res = await api.get('/location/rooms');
         if (res.data.success && Array.isArray(res.data.rooms)) {
           // Verify format: some JSON might be [{lat, lon}] or [[lat, lon]]
-          const parsedRooms = res.data.rooms.map((r: any) => {
+          const parsedRooms = res.data.rooms.map((r: Record<string, unknown>) => {
             // Defensive parsing if coordinates are not strict [lat, lon] arrays
             let coords = r.polygon_coordinates;
             if (typeof coords === 'string') {
-                try { coords = JSON.parse(coords); } catch (e) {}
+                try { coords = JSON.parse(coords); } catch {}
             }
             return {
               ...r,
               polygon_coordinates: coords
-            };
-          }).filter((r: any) => Array.isArray(r.polygon_coordinates) && r.polygon_coordinates.length >= 3);
+            } as RoomPolygon;
+          }).filter((r: RoomPolygon) => Array.isArray(r.polygon_coordinates) && r.polygon_coordinates.length >= 3);
           
           setRooms(parsedRooms);
         }
