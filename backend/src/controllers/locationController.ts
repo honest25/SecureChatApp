@@ -122,3 +122,58 @@ export const getRoomOccupancy = async (req: Request, res: Response, next: NextFu
     next(error);
   }
 };
+
+export const simulateMovement = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { room_number } = req.body;
+    const userId = req.user!.userId;
+
+    if (!room_number) {
+      return res.status(400).json({ success: false, message: 'Missing room_number' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.hostel_name) {
+      return res.status(400).json({ success: false, message: 'User not found or hostel not set' });
+    }
+
+    // Find the room
+    const room = await prisma.room.findUnique({
+      where: {
+        hostel_name_room_number: {
+          hostel_name: user.hostel_name,
+          room_number: room_number,
+        }
+      }
+    });
+
+    if (!room) {
+      return res.status(404).json({ success: false, message: 'Room not found in your hostel' });
+    }
+
+    const roomChanged = await updateUserLocation(userId, room.id, 'WIFI');
+
+    if (roomChanged) {
+      const io = getIo();
+      if (io) {
+        io.to(`feed:${room.hostel_name}`).emit('user_moved', {
+          userId: user.id,
+          userName: user.name,
+          profile_pic_url: user.profile_pic_url,
+          room: {
+            id: room.id,
+            room_number: room.room_number,
+            floor: room.floor,
+            name: room.name
+          },
+          action: 'ENTERED',
+          timestamp: new Date()
+        });
+      }
+    }
+
+    res.json({ success: true, message: `Successfully simulated entry into ${room_number}` });
+  } catch (error) {
+    next(error);
+  }
+};
