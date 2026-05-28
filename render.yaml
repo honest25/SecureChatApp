@@ -27,7 +27,7 @@ services:
       - key: JWT_REFRESH_SECRET
         generateValue: true
       - key: FRONTEND_URL
-        value: "https://your-frontend-project.vercel.app" # REPLACE THIS in Render Dashboard later
+        value: "https://secure-chat-app-sepia.vercel.app"
 
   - type: redis
     name: securechatapp-redis
