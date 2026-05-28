@@ -26,6 +26,8 @@ services:
         generateValue: true
       - key: JWT_REFRESH_SECRET
         generateValue: true
+      - key: DEV_BYPASS_EMAIL_VERIFICATION
+        value: "true"
       - key: FRONTEND_URL
         value: "https://secure-chat-app-sepia.vercel.app"
 
