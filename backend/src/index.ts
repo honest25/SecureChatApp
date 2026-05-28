@@ -20,6 +20,7 @@ const httpServer = createServer(app);
 setupSocket(httpServer);
 
 // Security Middlewares
+app.set('trust proxy', 1);
 app.use(helmet());
 app.use(cors({
   origin: env.FRONTEND_URL,

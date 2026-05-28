@@ -187,3 +187,40 @@ export const refreshToken = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const verifyEmail = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ success: false, message: 'Verification token is required' });
+    }
+
+    const verificationRecord = await prisma.verificationToken.findUnique({
+      where: { token },
+      include: { user: true },
+    });
+
+    if (!verificationRecord) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired verification token' });
+    }
+
+    if (verificationRecord.expires_at < new Date()) {
+      await prisma.verificationToken.delete({ where: { id: verificationRecord.id } });
+      return res.status(400).json({ success: false, message: 'Verification token has expired. Please register again.' });
+    }
+
+    // Verify user and send welcome email
+    await prisma.user.update({
+      where: { id: verificationRecord.user_id },
+      data: { is_verified: true },
+    });
+
+    await prisma.verificationToken.delete({ where: { id: verificationRecord.id } });
+    await sendWelcomeEmail(verificationRecord.user.email, verificationRecord.user.name);
+
+    return res.json({ success: true, message: 'Email verified successfully! You can now sign in.' });
+  } catch (error) {
+    next(error);
+  }
+};
