@@ -71,6 +71,32 @@ export const setupSocket = (httpServer: HttpServer) => {
       console.log(`[Socket] User ${userId} left location feed for ${hostelName}`);
     });
 
+    socket.on('update_gps_location', async (data: { lat: number, lon: number, hostelName: string }) => {
+      try {
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        if (!user) return;
+
+        // Upsert LivePresence with precise GPS
+        await prisma.livePresence.upsert({
+          where: { user_id: userId },
+          update: { latitude: data.lat, longitude: data.lon, method: 'GPS', updated_at: new Date() },
+          create: { user_id: userId, latitude: data.lat, longitude: data.lon, method: 'GPS' }
+        });
+
+        // Broadcast raw GPS to others in the same hostel feed
+        io.to(`feed:${data.hostelName}`).emit('user_gps_updated', {
+          userId: user.id,
+          userName: user.name,
+          profile_pic_url: user.profile_pic_url,
+          latitude: data.lat,
+          longitude: data.lon,
+          timestamp: new Date()
+        });
+      } catch (err) {
+        console.error('[Socket] Error updating GPS location', err);
+      }
+    });
+
     socket.on('send_message', async (data) => {
       // Data: { chatId, content, type, mediaUrl }
       const message = await prisma.message.create({

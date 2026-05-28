@@ -7,8 +7,8 @@ import Sidebar from '@/components/chat/Sidebar';
 import ChatArea from '@/components/chat/ChatArea';
 import { useSocket } from '@/hooks/useSocket';
 
-import LiveActivityFeed from '@/components/location/LiveActivityFeed';
-import LocationSimulator from '@/components/location/LocationSimulator';
+import NearbyRadar from '@/components/location/NearbyRadar';
+import GPSSimulator from '@/components/location/GPSSimulator';
 
 export default function ChatLayout() {
   const router = useRouter();
@@ -43,8 +43,8 @@ export default function ChatLayout() {
         <ChatArea />
         {/* Right Sidebar: Location Tracking System */}
         <div className="w-80 hidden lg:flex flex-col border-l border-gray-800 p-4 bg-gray-950">
-           <LiveActivityFeed />
-           <LocationSimulator />
+           <NearbyRadar />
+           <GPSSimulator />
         </div>
       </div>
     </div>

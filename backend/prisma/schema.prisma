@@ -212,12 +212,15 @@ model BeaconMapping {
 model LivePresence {
   id           String     @id @default(uuid())
   user_id      String     @unique // A user can only be in one room at a time
-  room_id      String
+  room_id      String?
+  latitude     Float?
+  longitude    Float?
   entered_at   DateTime   @default(now())
+  updated_at   DateTime   @default(now()) @updatedAt
   method       SignalType @default(WIFI) // How they were detected
 
   user         User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  room         Room       @relation(fields: [room_id], references: [id], onDelete: Cascade)
+  room         Room?      @relation(fields: [room_id], references: [id], onDelete: SetNull)
 
   @@index([room_id])
 }
