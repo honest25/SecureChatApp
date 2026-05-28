@@ -23,7 +23,7 @@ export default function Login() {
     try {
       const res = await api.post('/auth/login', { email, password });
       if (res.data.success) {
-        login(res.data.user);
+        login(res.data.user, res.data.accessToken);
         router.push('/chat');
       }
     } catch (err: unknown) {

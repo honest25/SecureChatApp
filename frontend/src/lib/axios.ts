@@ -1,8 +1,18 @@
 import axios from 'axios';
+import { useAuthStore } from '../store/useAuthStore';
 
 export const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000',
   withCredentials: true, // Important for sending HttpOnly cookies
+});
+
+// Request interceptor to attach Bearer token fallback
+api.interceptors.request.use((config) => {
+  const token = useAuthStore.getState().accessToken;
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
 });
 
 // Response Interceptor for handling 401 and Token Refresh

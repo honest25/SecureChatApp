@@ -11,8 +11,9 @@ interface User {
 
 interface AuthState {
   user: User | null;
+  accessToken: string | null;
   isAuthenticated: boolean;
-  login: (user: User) => void;
+  login: (user: User, accessToken: string) => void;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
 }
@@ -21,9 +22,10 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       user: null,
+      accessToken: null,
       isAuthenticated: false,
 
-      login: (user) => set({ user, isAuthenticated: true }),
+      login: (user, accessToken) => set({ user, accessToken, isAuthenticated: true }),
 
       logout: async () => {
         try {
@@ -31,7 +33,7 @@ export const useAuthStore = create<AuthState>()(
         } catch (e) {
           console.error('Logout failed on server');
         } finally {
-          set({ user: null, isAuthenticated: false });
+          set({ user: null, accessToken: null, isAuthenticated: false });
         }
       },
 

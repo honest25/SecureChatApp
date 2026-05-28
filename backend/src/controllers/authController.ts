@@ -95,6 +95,8 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
 
     return res.json({
       success: true,
+      accessToken,
+      refreshToken,
       user: {
         id: user.id,
         name: user.name,
