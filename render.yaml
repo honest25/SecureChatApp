@@ -30,9 +30,15 @@ services:
   - type: redis
     name: securechatapp-redis
     plan: free
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: everywhere
 
 databases:
   - name: securechatapp-db
     plan: free
     databaseName: securechat
     user: securechatuser
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: everywhere
