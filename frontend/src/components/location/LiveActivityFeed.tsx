@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { getSocket } from '@/hooks/useSocket';
+import { useSocket } from '@/hooks/useSocket';
 import { useAuthStore } from '@/store/useAuthStore';
 import { MapPin, Activity } from 'lucide-react';
 
@@ -22,11 +22,10 @@ interface LocationEvent {
 export default function LiveActivityFeed() {
   const [events, setEvents] = useState<LocationEvent[]>([]);
   const user = useAuthStore(state => state.user);
+  const { socket } = useSocket();
 
   useEffect(() => {
-    if (!user) return;
-    const socket = getSocket();
-    if (!socket) return;
+    if (!user || !socket) return;
 
     // Join the hostel-specific location feed
     socket.emit('join_location_feed', user.hostel_name || 'Hostel 3');
@@ -41,7 +40,7 @@ export default function LiveActivityFeed() {
       socket.off('user_moved', handleUserMoved);
       socket.emit('leave_location_feed', user.hostel_name || 'Hostel 3');
     };
-  }, [user]);
+  }, [user, socket]);
 
   return (
     <div className="bg-gray-800 rounded-xl p-4 flex flex-col h-full shadow-lg border border-gray-700">

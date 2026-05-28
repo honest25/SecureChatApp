@@ -26,9 +26,10 @@ export default function Login() {
         login(res.data.user, res.data.accessToken);
         router.push('/chat');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('LOGIN ERROR:', err);
-      const msg = err?.response?.data?.message || err?.message || 'Login failed. Please try again.';
+      const error = err as { response?: { data?: { message?: string } }, message?: string };
+      const msg = error?.response?.data?.message || error?.message || 'Login failed. Please try again.';
       setError(msg);
     } finally {
       setLoading(false);
