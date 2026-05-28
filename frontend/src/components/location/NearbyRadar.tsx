@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useSocket } from '@/hooks/useSocket';
 import { useAuthStore } from '@/store/useAuthStore';
 import { getDistanceInMeters } from '@/utils/distance';
-import { Compass, Navigation } from 'lucide-react';
+import { Compass, Navigation, MapPin } from 'lucide-react';
 
 interface GPSLocationEvent {
   userId: string;
@@ -12,6 +12,9 @@ interface GPSLocationEvent {
   profile_pic_url: string | null;
   latitude: number;
   longitude: number;
+  roomId?: string | null;
+  roomName?: string | null;
+  roomNumber?: string | null;
   timestamp: Date;
 }
 
@@ -21,7 +24,7 @@ interface NearbyUser extends GPSLocationEvent {
 
 export default function NearbyRadar() {
   const [nearbyUsers, setNearbyUsers] = useState<Map<string, NearbyUser>>(new Map());
-  const [myLocation, setMyLocation] = useState<{ lat: number, lon: number } | null>(null);
+  const [myLocation, setMyLocation] = useState<{ lat: number, lon: number, roomId: string | null } | null>(null);
   const [error, setError] = useState<string | null>(null);
   
   const user = useAuthStore(state => state.user);
@@ -37,7 +40,8 @@ export default function NearbyRadar() {
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
         const coords = { lat: position.coords.latitude, lon: position.coords.longitude };
-        setMyLocation(coords);
+        // myLocation roomId updates when we receive it back from our own socket echo or keep it null until calculated
+        setMyLocation(prev => prev ? { ...prev, ...coords } : { ...coords, roomId: null });
         
         // Emit to server
         if (socket && user?.hostel_name) {
@@ -60,8 +64,11 @@ export default function NearbyRadar() {
     socket.emit('join_location_feed', user.hostel_name || 'Hostel 3');
 
     const handleGPSUpdate = (event: GPSLocationEvent) => {
-      // Ignore own updates
-      if (event.userId === user.id) return;
+      // If it's my own update, just update my roomId
+      if (event.userId === user.id) {
+        setMyLocation(prev => prev ? { ...prev, roomId: event.roomId || null } : null);
+        return;
+      }
 
       setNearbyUsers((prev) => {
         const newMap = new Map(prev);
@@ -90,9 +97,11 @@ export default function NearbyRadar() {
 
   return (
     <div className="bg-gray-800 rounded-xl p-4 flex flex-col h-full shadow-lg border border-gray-700">
-      <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-700">
-        <Compass className="text-blue-400 w-5 h-5 animate-pulse" />
-        <h2 className="text-sm font-semibold text-white">Nearby Radar</h2>
+      <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-700">
+        <div className="flex items-center gap-2">
+          <Compass className="text-blue-400 w-5 h-5 animate-pulse" />
+          <h2 className="text-sm font-semibold text-white">Live Pin-Point Radar</h2>
+        </div>
       </div>
 
       {error ? (
@@ -101,7 +110,7 @@ export default function NearbyRadar() {
         </div>
       ) : !myLocation ? (
         <div className="text-xs text-gray-400 animate-pulse text-center mt-10">
-          Acquiring GPS satellite lock...
+          Acquiring GPS satellite & Room lock...
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
@@ -110,22 +119,40 @@ export default function NearbyRadar() {
               No one is nearby right now.
             </div>
           ) : (
-            sortedNearby.map((person) => (
-              <div key={person.userId} className="bg-gray-900 rounded-lg p-3 flex items-center justify-between shadow-sm border border-gray-700/50 hover:border-gray-600 transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-xs shadow-inner">
-                    {person.userName[0].toUpperCase()}
+            sortedNearby.map((person) => {
+              const isSameRoom = person.roomId && myLocation.roomId === person.roomId;
+              
+              return (
+                <div key={person.userId} className={`rounded-lg p-3 flex flex-col gap-2 shadow-sm border transition-colors ${isSameRoom ? 'bg-blue-900/20 border-blue-500/50' : 'bg-gray-900 border-gray-700/50 hover:border-gray-600'}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs shadow-inner ${isSameRoom ? 'bg-blue-500' : 'bg-gradient-to-tr from-purple-500 to-pink-500'}`}>
+                        {person.userName[0].toUpperCase()}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-sm text-gray-200 font-medium">{person.userName}</span>
+                        {person.roomName ? (
+                           <span className="text-xs text-green-400 flex items-center gap-1">
+                             <MapPin className="w-3 h-3" />
+                             In {person.roomName} ({person.roomNumber})
+                           </span>
+                        ) : (
+                           <span className="text-xs text-blue-400 flex items-center gap-1">
+                             <Navigation className="w-3 h-3" /> 
+                             {person.distanceMeters < 10 ? 'Right next to you' : `${person.distanceMeters}m away`}
+                           </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex flex-col">
-                    <span className="text-sm text-gray-200 font-medium">{person.userName}</span>
-                    <span className="text-xs text-blue-400 flex items-center gap-1">
-                      <Navigation className="w-3 h-3" /> 
-                      {person.distanceMeters < 10 ? 'Right next to you' : `${person.distanceMeters}m away`}
-                    </span>
-                  </div>
+                  {isSameRoom && (
+                    <div className="text-xs text-blue-300 bg-blue-900/40 p-1.5 rounded text-center font-medium">
+                      In the same room as you!
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       )}

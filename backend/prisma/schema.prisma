@@ -167,62 +167,108 @@ model Report {
 }
 
 // ----------------------------------------------------------------------
-// LOCATION TRACKING SYSTEM
+// ADVANCED INDOOR LOCATION SYSTEM
 // ----------------------------------------------------------------------
 
-model Room {
-  id           String   @id @default(uuid())
-  hostel_name  String
-  floor        Int
-  room_number  String
-  owner_id     String?  // The user who owns this room (if it's a student's room)
-  name         String?  // e.g., "Common Room", "Gym", or defaults to "Anurag's Room"
-  created_at   DateTime @default(now())
+model Building {
+  id          String         @id @default(uuid())
+  name        String         @unique // e.g., "block b", "hostel 3"
+  created_at  DateTime       @default(now())
   
-  owner        User?    @relation("RoomOwner", fields: [owner_id], references: [id])
-  
-  beacons      BeaconMapping[]
-  presences    LivePresence[]
-  movements    MovementLog[]
-  signals      DeviceSignal[]
+  floors      HostelFloor[]
+  rooms       Room[]
+}
 
-  @@unique([hostel_name, room_number])
+model HostelFloor {
+  id          String   @id @default(uuid())
+  building_id String
+  floor_level Int      // 0 = Ground, 1 = 1st Floor, etc.
+  name        String?  // e.g., "Ground Floor Wing A"
+  
+  building    Building @relation(fields: [building_id], references: [id], onDelete: Cascade)
+  rooms       Room[]
+  
+  @@unique([building_id, floor_level])
+}
+
+model Room {
+  id                  String   @id @default(uuid())
+  building_id         String
+  floor_id            String
+  room_number         String
+  owner_id            String?  // Optional resident of the room
+  name                String?  // e.g., "Common Room", "Gym"
+  
+  // JSON array of [lat, lon] tuples defining the physical boundaries for Point-in-Polygon
+  polygon_coordinates Json?    
+  
+  created_at          DateTime @default(now())
+  
+  building            Building    @relation(fields: [building_id], references: [id], onDelete: Cascade)
+  floor               HostelFloor @relation(fields: [floor_id], references: [id], onDelete: Cascade)
+  owner               User?       @relation("RoomOwner", fields: [owner_id], references: [id])
+  
+  beacons             BeaconMapping[]
+  wifi_aps            WiFiAccessPoint[]
+  presences           LivePresence[]
+  movements           MovementLog[]
+
+  @@unique([building_id, room_number])
   @@index([owner_id])
 }
 
 enum SignalType {
   WIFI
   BLE
+  GPS
   QR
+}
+
+model WiFiAccessPoint {
+  id           String      @id @default(uuid())
+  room_id      String
+  bssid        String      @unique // MAC Address
+  ssid         String?
+  latitude     Float?
+  longitude    Float?
+  created_at   DateTime    @default(now())
+
+  room         Room        @relation(fields: [room_id], references: [id], onDelete: Cascade)
+  
+  @@index([room_id])
 }
 
 model BeaconMapping {
   id           String     @id @default(uuid())
   room_id      String
-  mac_address  String     @unique // WiFi MAC or BLE UUID
-  type         SignalType
+  uuid         String     @unique // BLE UUID + Major + Minor
+  type         SignalType @default(BLE)
+  latitude     Float?
+  longitude    Float?
   created_at   DateTime   @default(now())
 
   room         Room       @relation(fields: [room_id], references: [id], onDelete: Cascade)
 
   @@index([room_id])
-  @@index([mac_address])
 }
 
 model LivePresence {
-  id           String     @id @default(uuid())
-  user_id      String     @unique // A user can only be in one room at a time
-  room_id      String?
-  latitude     Float?
-  longitude    Float?
-  entered_at   DateTime   @default(now())
-  updated_at   DateTime   @default(now()) @updatedAt
-  method       SignalType @default(WIFI) // How they were detected
+  id               String     @id @default(uuid())
+  user_id          String     @unique
+  room_id          String?    // Null if outside a mapped room
+  floor_id         String?    
+  latitude         Float?
+  longitude        Float?
+  confidence_score Float      @default(1.0) // 0.0 to 1.0 (How certain are we?)
+  entered_at       DateTime   @default(now())
+  updated_at       DateTime   @default(now()) @updatedAt
+  method           SignalType @default(GPS)
 
-  user         User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  room         Room?      @relation(fields: [room_id], references: [id], onDelete: SetNull)
+  user             User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  room             Room?      @relation(fields: [room_id], references: [id], onDelete: SetNull)
 
   @@index([room_id])
+  @@index([latitude, longitude])
 }
 
 model MovementLog {
@@ -231,7 +277,7 @@ model MovementLog {
   room_id      String
   entered_at   DateTime
   exited_at    DateTime?
-  method       SignalType @default(WIFI)
+  method       SignalType @default(GPS)
 
   user         User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
   room         Room       @relation(fields: [room_id], references: [id], onDelete: Cascade)
@@ -242,12 +288,11 @@ model MovementLog {
 
 model DeviceSignal {
   id           String     @id @default(uuid())
-  room_id      String
-  mac_address  String
-  avg_rssi     Int        // Expected signal strength in this room
+  user_id      String
+  mac_address  String     // WiFi BSSID or BLE UUID
+  rssi         Int        // Signal strength (e.g., -65 dBm)
   created_at   DateTime   @default(now())
 
-  room         Room       @relation(fields: [room_id], references: [id], onDelete: Cascade)
-
-  @@unique([room_id, mac_address])
+  @@index([user_id])
+  @@index([mac_address])
 }

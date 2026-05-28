@@ -76,20 +76,59 @@ export const setupSocket = (httpServer: HttpServer) => {
         const user = await prisma.user.findUnique({ where: { id: userId } });
         if (!user) return;
 
-        // Upsert LivePresence with precise GPS
+        // Find the building for this hostel
+        const building = await prisma.building.findUnique({ where: { name: data.hostelName } });
+        let roomId: string | null = null;
+        let roomName: string | null = null;
+        let roomNumber: string | null = null;
+
+        if (building) {
+          // Use Indoor Location Engine to check if user entered a room's polygon boundary
+          const { detectExactRoom } = require('../services/indoorLocationEngine');
+          roomId = await detectExactRoom(data.lat, data.lon, building.id);
+          
+          if (roomId) {
+            const detectedRoom = await prisma.room.findUnique({ where: { id: roomId } });
+            if (detectedRoom) {
+              roomName = detectedRoom.name;
+              roomNumber = detectedRoom.room_number;
+            }
+          }
+        }
+
+        // Upsert LivePresence with precise GPS and dynamic roomId
         await prisma.livePresence.upsert({
           where: { user_id: userId },
-          update: { latitude: data.lat, longitude: data.lon, method: 'GPS', updated_at: new Date() },
-          create: { user_id: userId, latitude: data.lat, longitude: data.lon, method: 'GPS' }
+          update: { 
+            latitude: data.lat, longitude: data.lon, 
+            room_id: roomId,
+            method: 'GPS', updated_at: new Date() 
+          },
+          create: { 
+            user_id: userId, 
+            latitude: data.lat, longitude: data.lon, 
+            room_id: roomId,
+            method: 'GPS' 
+          }
         });
 
-        // Broadcast raw GPS to others in the same hostel feed
+        // Log movement if room changed (we should ideally track previous room in Redis, simplified here)
+        if (roomId) {
+            await redis.setex(`presence:user:${userId}:room`, 15 * 60, roomId);
+        } else {
+            await redis.del(`presence:user:${userId}:room`);
+        }
+
+        // Broadcast raw GPS + Room info to others in the same hostel feed
         io.to(`feed:${data.hostelName}`).emit('user_gps_updated', {
           userId: user.id,
           userName: user.name,
           profile_pic_url: user.profile_pic_url,
           latitude: data.lat,
           longitude: data.lon,
+          roomId: roomId,
+          roomName: roomName,
+          roomNumber: roomNumber,
           timestamp: new Date()
         });
       } catch (err) {
