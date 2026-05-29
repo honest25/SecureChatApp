@@ -157,6 +157,16 @@ export default function ChatArea() {
                       <a href={`${getBaseUrl()}/download?url=${encodeURIComponent(msg.media_url)}&name=${encodeURIComponent(msg.file_name || 'image')}`} title="Click to download image">
                         <img src={getMediaUrl(msg.media_url)} alt="Attachment" className="rounded-lg max-h-64 object-contain hover:opacity-80 transition cursor-pointer" />
                       </a>
+                    ) : msg.media_url.match(/\.(mp3|wav|ogg|m4a)$/i) ? (
+                      <div className="flex flex-col gap-1">
+                        <span className="text-xs text-blue-200 truncate max-w-[200px]">{msg.file_name || 'Audio file'}</span>
+                        <audio controls src={getMediaUrl(msg.media_url)} className="max-w-full h-10 custom-audio" />
+                      </div>
+                    ) : msg.media_url.match(/\.(mp4|webm|mov)$/i) ? (
+                      <div className="flex flex-col gap-1">
+                        <span className="text-xs text-blue-200 truncate max-w-[200px]">{msg.file_name || 'Video file'}</span>
+                        <video controls src={getMediaUrl(msg.media_url)} className="max-w-full max-h-64 rounded-lg" />
+                      </div>
                     ) : (
                       <a href={`${getBaseUrl()}/download?url=${encodeURIComponent(msg.media_url)}&name=${encodeURIComponent(msg.file_name || 'document')}`} className="flex items-center text-blue-200 underline break-all" title="Click to download document">
                         <Paperclip className="w-4 h-4 mr-1 flex-shrink-0" /> {msg.file_name || 'View File'}

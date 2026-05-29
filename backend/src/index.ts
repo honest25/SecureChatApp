@@ -27,7 +27,9 @@ startPresenceCleanupWorker();
 
 // Security Middlewares
 app.set('trust proxy', 1);
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 app.use(cors({
   origin: function (origin, callback) {
     const allowedOrigins = [env.FRONTEND_URL, 'http://localhost:3000', 'http://192.168.1.35:3000', 'http://127.0.0.1:3000'];
