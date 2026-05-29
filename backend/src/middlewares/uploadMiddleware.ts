@@ -12,11 +12,8 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-  if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('application/')) {
-    cb(null, true);
-  } else {
-    cb(new Error('Invalid file type'));
-  }
+  // Allow all file types (images, pdfs, documents, etc.)
+  cb(null, true);
 };
 
 export const upload = multer({ 

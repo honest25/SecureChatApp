@@ -181,9 +181,9 @@ export default function ChatArea() {
         )}
         <form onSubmit={handleSend} className="flex items-end space-x-2">
           <div className="flex-1 bg-gray-700 rounded-2xl flex items-center border border-gray-600 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all overflow-hidden">
-            <label className="p-3 text-gray-400 hover:text-white cursor-pointer transition">
-              <ImageIcon className="w-5 h-5" />
-              <input type="file" className="hidden" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+            <label className="p-3 text-gray-400 hover:text-white cursor-pointer transition" title="Attach file, image, or document">
+              <Paperclip className="w-5 h-5" />
+              <input type="file" className="hidden" accept="*/*" onChange={(e) => setFile(e.target.files?.[0] || null)} />
             </label>
             <input
               type="text"
