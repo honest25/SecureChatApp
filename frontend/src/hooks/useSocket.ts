@@ -60,8 +60,8 @@ export const useSocket = () => {
     socketRef.current?.emit('join_chat', chatId);
   };
 
-  const sendMessage = (chatId: string, content: string, type: 'TEXT' | 'IMAGE' | 'FILE' = 'TEXT', mediaUrl?: string) => {
-    socketRef.current?.emit('send_message', { chatId, content, type, mediaUrl });
+  const sendMessage = (chatId: string, content: string, type: 'TEXT' | 'IMAGE' | 'FILE' = 'TEXT', mediaUrl?: string, fileName?: string) => {
+    socketRef.current?.emit('send_message', { chatId, content, type, mediaUrl, fileName });
   };
 
   const emitTyping = (chatId: string, receiverId: string) => {

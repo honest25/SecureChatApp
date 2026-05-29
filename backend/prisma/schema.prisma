@@ -100,6 +100,7 @@ model Message {
   content      String    @db.Text
   type         MessageType @default(TEXT)
   media_url    String?
+  file_name    String?
   is_read      Boolean   @default(false)
   is_deleted   Boolean   @default(false) // For soft delete
   created_at   DateTime  @default(now())

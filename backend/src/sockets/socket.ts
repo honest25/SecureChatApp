@@ -208,6 +208,7 @@ export const setupSocket = (httpServer: HttpServer) => {
           content: data.content,
           type: data.type || 'TEXT',
           media_url: data.mediaUrl || null,
+          file_name: data.fileName || null,
         }
       });
 

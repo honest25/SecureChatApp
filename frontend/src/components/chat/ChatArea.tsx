@@ -62,6 +62,7 @@ export default function ChatArea() {
 
     let mediaUrl = undefined;
     let type: 'TEXT' | 'IMAGE' | 'FILE' = 'TEXT';
+    let fileName = undefined;
 
     if (file) {
       const formData = new FormData();
@@ -72,13 +73,14 @@ export default function ChatArea() {
         });
         mediaUrl = res.data.url;
         type = file.type.startsWith('image/') ? 'IMAGE' : 'FILE';
+        fileName = file.name;
       } catch (err) {
         console.error('File upload failed', err);
         return;
       }
     }
 
-    sendMessage(activeChatId, inputText, type, mediaUrl);
+    sendMessage(activeChatId, inputText, type, mediaUrl, fileName);
     setInputText('');
     setFile(null);
     if (activeChat) emitStopTyping(activeChatId, activeChat.otherUser.id);
@@ -145,8 +147,8 @@ export default function ChatArea() {
                     {msg.type === 'IMAGE' ? (
                       <img src={msg.media_url} alt="Attachment" className="rounded-lg max-h-64 object-contain" />
                     ) : (
-                      <a href={msg.media_url} target="_blank" rel="noreferrer" className="flex items-center text-blue-200 underline">
-                        <Paperclip className="w-4 h-4 mr-1" /> View File
+                      <a href={msg.media_url} target="_blank" rel="noreferrer" className="flex items-center text-blue-200 underline break-all">
+                        <Paperclip className="w-4 h-4 mr-1 flex-shrink-0" /> {msg.file_name || 'View File'}
                       </a>
                     )}
                   </div>

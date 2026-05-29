@@ -7,6 +7,7 @@ interface Message {
   content: string;
   type: 'TEXT' | 'IMAGE' | 'FILE';
   media_url?: string;
+  file_name?: string;
   is_read: boolean;
   created_at: string;
 }
