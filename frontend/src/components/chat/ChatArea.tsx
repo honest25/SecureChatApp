@@ -156,7 +156,7 @@ export default function ChatArea() {
                     {msg.type === 'IMAGE' ? (
                       <img src={getMediaUrl(msg.media_url)} alt="Attachment" className="rounded-lg max-h-64 object-contain" />
                     ) : (
-                      <a href={getMediaUrl(msg.media_url)} target="_blank" rel="noreferrer" className="flex items-center text-blue-200 underline break-all">
+                      <a href={`${getBaseUrl()}/download?url=${encodeURIComponent(msg.media_url)}&name=${encodeURIComponent(msg.file_name || 'document')}`} className="flex items-center text-blue-200 underline break-all">
                         <Paperclip className="w-4 h-4 mr-1 flex-shrink-0" /> {msg.file_name || 'View File'}
                       </a>
                     )}

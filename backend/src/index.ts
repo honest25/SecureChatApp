@@ -61,6 +61,23 @@ app.get('/', (req, res) => {
   res.send('SecureChatApp Backend is running!');
 });
 
+// Download Route for forcing file download with correct name
+import fs from 'fs';
+app.get('/download', (req, res) => {
+  const fileUrl = req.query.url as string;
+  const originalName = req.query.name as string;
+  if (!fileUrl) return res.status(400).send('Missing url parameter');
+
+  const filename = path.basename(fileUrl);
+  const filepath = path.join(__dirname, '../public/uploads', filename);
+
+  if (!fs.existsSync(filepath)) {
+    return res.status(404).send('File not found. Note: Uploads on free servers are deleted when the server restarts.');
+  }
+
+  res.download(filepath, originalName || filename);
+});
+
 // Global Error Handler
 app.use(errorHandler);
 
