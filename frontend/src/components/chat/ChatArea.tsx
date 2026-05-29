@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useChatStore } from '@/store/useChatStore';
 import { useAuthStore } from '@/store/useAuthStore';
-import { api } from '@/lib/axios';
+import { api, getBaseUrl } from '@/lib/axios';
 import { Send, Image as ImageIcon, Paperclip } from 'lucide-react';
 import { format } from 'date-fns';
 import { useSocket } from '@/hooks/useSocket';
@@ -139,15 +139,24 @@ export default function ChatArea() {
 
         {chatMessages.map((msg) => {
           const isMine = msg.sender_id === user?.id;
+          
+          const getMediaUrl = (url: string) => {
+            if (url.startsWith('http://localhost:5000')) {
+              return url.replace('http://localhost:5000', getBaseUrl());
+            }
+            if (url.startsWith('http')) return url;
+            return `${getBaseUrl()}${url}`;
+          };
+
           return (
             <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[70%] rounded-2xl px-4 py-2 ${isMine ? 'bg-blue-600 text-white rounded-br-sm' : 'bg-gray-800 text-gray-100 border border-gray-700 rounded-bl-sm'}`}>
                 {msg.media_url && (
                   <div className="mb-2">
                     {msg.type === 'IMAGE' ? (
-                      <img src={msg.media_url} alt="Attachment" className="rounded-lg max-h-64 object-contain" />
+                      <img src={getMediaUrl(msg.media_url)} alt="Attachment" className="rounded-lg max-h-64 object-contain" />
                     ) : (
-                      <a href={msg.media_url} target="_blank" rel="noreferrer" className="flex items-center text-blue-200 underline break-all">
+                      <a href={getMediaUrl(msg.media_url)} target="_blank" rel="noreferrer" className="flex items-center text-blue-200 underline break-all">
                         <Paperclip className="w-4 h-4 mr-1 flex-shrink-0" /> {msg.file_name || 'View File'}
                       </a>
                     )}

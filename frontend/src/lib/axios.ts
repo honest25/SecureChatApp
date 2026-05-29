@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
 
-const getBaseUrl = () => {
+export const getBaseUrl = () => {
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
     

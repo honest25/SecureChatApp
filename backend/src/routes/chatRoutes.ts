@@ -85,9 +85,8 @@ export const uploadMedia = async (req: Request, res: Response, next: NextFunctio
       return res.status(400).json({ success: false, message: 'No file provided' });
     }
     
-    // In a real production app for Render, you should upload to Cloudinary/S3 here
-    // and return the remote URL. For this MVP, we return the local path.
-    const fileUrl = `${process.env.BACKEND_URL || 'http://localhost:5000'}/uploads/${req.file.filename}`;
+    // Return the relative path. The frontend will prepend the correct backend URL based on its environment.
+    const fileUrl = `/uploads/${req.file.filename}`;
     
     res.json({ success: true, url: fileUrl });
   } catch (error) {
