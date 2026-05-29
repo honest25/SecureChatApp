@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/axios';
-import { X, User as UserIcon, MapPin, Home, Info } from 'lucide-react';
+import { X, User as UserIcon, MapPin, Home, Info, GraduationCap, Briefcase } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 interface UserProfileModalProps {
@@ -16,6 +16,11 @@ interface UserProfile {
   gender: string | null;
   room_number: string | null;
   hostel_name: string | null;
+  profession: string | null;
+  college_name: string | null;
+  college_location: string | null;
+  company_name: string | null;
+  company_location: string | null;
   profile_pic_url: string | null;
   is_online: boolean;
   last_seen: string | null;
@@ -81,6 +86,34 @@ export default function UserProfileModal({ userId, onClose }: UserProfileModalPr
             </div>
 
             <div className="p-5 space-y-4">
+              
+              {/* Profession Section */}
+              {profile.profession === 'STUDENT' && (
+                <div className="flex items-center gap-3 bg-blue-900/30 p-3 rounded-lg border border-blue-700/50">
+                  <GraduationCap className="w-5 h-5 text-blue-400" />
+                  <div>
+                    <p className="text-xs text-blue-300/70 uppercase font-semibold">Student</p>
+                    <p className="text-sm text-blue-100">
+                      Studies at {profile.college_name || 'College'}
+                      {profile.college_location ? ` in ${profile.college_location}` : ''}
+                    </p>
+                  </div>
+                </div>
+              )}
+              
+              {profile.profession === 'PROFESSIONAL' && (
+                <div className="flex items-center gap-3 bg-emerald-900/30 p-3 rounded-lg border border-emerald-700/50">
+                  <Briefcase className="w-5 h-5 text-emerald-400" />
+                  <div>
+                    <p className="text-xs text-emerald-300/70 uppercase font-semibold">Professional</p>
+                    <p className="text-sm text-emerald-100">
+                      Works at {profile.company_name || 'Company'} 
+                      {profile.company_location ? ` in ${profile.company_location}` : ''}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center gap-3 bg-gray-700/30 p-3 rounded-lg border border-gray-700/50">
                 <Home className="w-5 h-5 text-purple-400" />
                 <div>

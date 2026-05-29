@@ -16,6 +16,14 @@ model User {
   room_number     String
   hostel_name     String
   mobile          String?
+  
+  // Professional Details
+  profession      Profession?
+  college_name    String?
+  college_location String?
+  company_name    String?
+  company_location String?
+  
   is_verified     Boolean        @default(false)
   profile_pic_url String?
   last_seen       DateTime       @default(now())
@@ -48,6 +56,11 @@ enum Gender {
   MALE
   FEMALE
   OTHER
+}
+
+enum Profession {
+  STUDENT
+  PROFESSIONAL
 }
 
 model Session {

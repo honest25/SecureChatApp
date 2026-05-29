@@ -18,6 +18,7 @@ export const getProfile = async (req: Request, res: Response, next: NextFunction
       select: {
         id: true, email: true, name: true, gender: true,
         room_number: true, hostel_name: true, mobile: true,
+        profession: true, college_name: true, company_name: true, company_location: true,
         profile_pic_url: true, is_online: true, last_seen: true, created_at: true
       }
     });
@@ -77,6 +78,10 @@ export const getOtherUserProfile = async (req: Request, res: Response, next: Nex
         gender: true,
         room_number: true,
         hostel_name: true,
+        profession: true,
+        college_name: true,
+        company_name: true,
+        company_location: true,
         profile_pic_url: true,
         is_online: true,
         last_seen: true,

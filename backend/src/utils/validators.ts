@@ -8,6 +8,11 @@ export const registerSchema = z.object({
   room_number: z.string().min(1),
   hostel_name: z.string().min(1),
   mobile: z.string().optional(),
+  profession: z.enum(['STUDENT', 'PROFESSIONAL']),
+  college_name: z.string().optional(),
+  college_location: z.string().optional(),
+  company_name: z.string().optional(),
+  company_location: z.string().optional(),
 });
 
 export const loginSchema = z.object({

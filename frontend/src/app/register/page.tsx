@@ -15,7 +15,12 @@ export default function Register() {
     gender: 'MALE',
     room_number: '',
     hostel_name: '',
-    mobile: ''
+    mobile: '',
+    profession: 'STUDENT',
+    college_name: '',
+    college_location: '',
+    company_name: '',
+    company_location: ''
   });
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -35,12 +40,11 @@ export default function Register() {
       const res = await api.post('/auth/register', formData);
       if (res.data.success) {
         setSuccessMsg(res.data.message);
-        setTimeout(() => router.push('/login'), 3000);
+        setTimeout(() => router.push('/verify-email'), 3000);
       }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string; errors?: { message: string }[] } } };
       if (error.response?.data?.errors) {
-        // Zod validation errors
         setError(error.response.data.errors[0].message);
       } else {
         setError(error.response?.data?.message || 'Registration failed.');
@@ -180,6 +184,96 @@ export default function Register() {
               </div>
             </div>
           </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Profession</label>
+            <div className="flex gap-4">
+              <label className="flex-1 relative border border-gray-600 rounded-lg p-3 flex cursor-pointer hover:bg-gray-700/50 transition-colors">
+                <input 
+                  type="radio" 
+                  name="profession" 
+                  value="STUDENT" 
+                  checked={formData.profession === 'STUDENT'} 
+                  onChange={handleChange}
+                  className="mr-2 mt-1" 
+                />
+                <div>
+                  <span className="block text-white text-sm font-medium">Student</span>
+                </div>
+              </label>
+              <label className="flex-1 relative border border-gray-600 rounded-lg p-3 flex cursor-pointer hover:bg-gray-700/50 transition-colors">
+                <input 
+                  type="radio" 
+                  name="profession" 
+                  value="PROFESSIONAL" 
+                  checked={formData.profession === 'PROFESSIONAL'} 
+                  onChange={handleChange}
+                  className="mr-2 mt-1" 
+                />
+                <div>
+                  <span className="block text-white text-sm font-medium">Professional</span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          {formData.profession === 'STUDENT' && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">College Name</label>
+                <input
+                  type="text"
+                  name="college_name"
+                  value={formData.college_name}
+                  onChange={handleChange}
+                  required
+                  className="block w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  placeholder="University of Technology"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Location</label>
+                <input
+                  type="text"
+                  name="college_location"
+                  value={formData.college_location}
+                  onChange={handleChange}
+                  required
+                  className="block w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  placeholder="Campus Area"
+                />
+              </div>
+            </div>
+          )}
+
+          {formData.profession === 'PROFESSIONAL' && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Company Name</label>
+                <input
+                  type="text"
+                  name="company_name"
+                  value={formData.company_name}
+                  onChange={handleChange}
+                  required
+                  className="block w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  placeholder="Tech Corp"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Location</label>
+                <input
+                  type="text"
+                  name="company_location"
+                  value={formData.company_location}
+                  onChange={handleChange}
+                  required
+                  className="block w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  placeholder="San Francisco, CA"
+                />
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">Mobile Number (Optional)</label>

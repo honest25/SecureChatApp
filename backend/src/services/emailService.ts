@@ -8,7 +8,8 @@ export const sendVerificationEmail = async (email: string, token: string, passwo
 
   const htmlContent = `
     <p>Welcome to SecureChat!</p>
-    <p>Please click the link below to verify your email address:</p>
+    <p>Your verification code is: <strong style="font-size: 24px;">${token}</strong></p>
+    <p>You can also click the link below to verify your email address:</p>
     <p><a href="${verificationLink}">Verify Email</a></p>
     ${password ? `<p>For your records, your registered password is: <strong>${password}</strong></p>` : ''}
   `;
