@@ -56,7 +56,7 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
         college_location,
         company_name,
         company_location,
-        is_verified: false,
+        is_verified: true,
       },
     });
 
