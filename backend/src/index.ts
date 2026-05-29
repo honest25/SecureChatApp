@@ -3,6 +3,7 @@ import { createServer } from 'http';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
+import path from 'path';
 import { env } from './config/env';
 import { setupSocket } from './sockets/socket';
 import { errorHandler } from './middlewares/errorHandler';
@@ -48,7 +49,7 @@ app.use((req, res, next) => {
 });
 
 // Routes
-app.use('/uploads', express.static('public/uploads'));
+app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
 app.use('/auth', authRoutes);
 app.use('/user', userRoutes);
 app.use('/chat', chatRoutes);
