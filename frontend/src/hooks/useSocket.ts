@@ -10,7 +10,19 @@ export const useSocket = () => {
 
   useEffect(() => {
     if (isAuthenticated && user && !socketRef.current) {
-      socketRef.current = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000', {
+      let socketUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      if (typeof window !== 'undefined') {
+        const hostname = window.location.hostname;
+        const isLocalNetworkIP = /^(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/.test(hostname);
+        
+        if (isLocalNetworkIP) {
+          socketUrl = `http://${hostname}:5000`;
+        } else if (hostname.includes('vercel.app')) {
+          socketUrl = 'https://securechatapp-backend.onrender.com';
+        }
+      }
+
+      socketRef.current = io(socketUrl, {
         withCredentials: true,
         auth: { token: accessToken }
       });

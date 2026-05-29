@@ -67,22 +67,7 @@ export default function Sidebar() {
 
   return (
     <div className="w-1/3 border-r border-gray-700 bg-gray-800 flex flex-col h-full">
-      <div className="p-4 bg-gray-900 border-b border-gray-700 flex justify-between items-center">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold">
-            {user?.name.charAt(0).toUpperCase()}
-          </div>
-          <div>
-            <h3 className="text-white font-semibold">{user?.name}</h3>
-            <span className="text-xs text-green-400">Online</span>
-          </div>
-        </div>
-        <button onClick={handleLogout} className="text-gray-400 hover:text-white transition">
-          <LogOut className="w-5 h-5" />
-        </button>
-      </div>
-
-      <div className="p-3">
+      <div className="p-3 bg-gray-900 border-b border-gray-700">
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search className="h-4 w-4 text-gray-500" />

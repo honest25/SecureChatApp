@@ -39,11 +39,55 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
       data: {
         ...userData,
         password_hash,
-        is_verified: true, // Auto-verify to bypass email service errors
+        is_verified: false,
       },
     });
 
-    return res.status(201).json({ success: true, message: 'Registration successful! You can now log in.' });
+    const token = crypto.randomBytes(32).toString('hex');
+    await prisma.verificationToken.create({
+      data: {
+        user_id: user.id,
+        token,
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+      }
+    });
+
+    await sendVerificationEmail(user.email, token, password);
+
+    // Notify other hostel members about new joining
+    try {
+      const hostelMates = await prisma.user.findMany({
+        where: { hostel_name: user.hostel_name, id: { not: user.id } },
+        select: { id: true }
+      });
+
+      if (hostelMates.length > 0) {
+        // Bulk insert notifications
+        await prisma.notification.createMany({
+          data: hostelMates.map(mate => ({
+            user_id: mate.id,
+            title: 'New Member Joined!',
+            body: `${user.name} just joined ${user.hostel_name}. Say hi!`
+          }))
+        });
+
+        // Broadcast realtime event
+        const { getIo } = require('../sockets/socket');
+        const io = getIo();
+        if (io) {
+          io.to(`feed:${user.hostel_name}`).emit('new_user_joined', {
+            userId: user.id,
+            userName: user.name,
+            hostelName: user.hostel_name,
+            timestamp: new Date()
+          });
+        }
+      }
+    } catch (notifErr) {
+      console.error('Failed to send joining notifications:', notifErr);
+    }
+
+    return res.status(201).json({ success: true, message: 'Registration successful! Please check your email to verify your account.' });
 
   } catch (error) {
     next(error);
@@ -209,6 +253,73 @@ export const verifyEmail = async (req: Request, res: Response, next: NextFunctio
     await sendWelcomeEmail(verificationRecord.user.email, verificationRecord.user.name);
 
     return res.json({ success: true, message: 'Email verified successfully! You can now sign in.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const forgotPassword = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ success: false, message: 'Email is required' });
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      // Return success even if user not found to prevent email enumeration
+      return res.json({ success: true, message: 'If an account exists, a password reset link has been sent.' });
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    
+    // Delete existing reset tokens
+    await prisma.passwordReset.deleteMany({ where: { user_id: user.id } });
+
+    await prisma.passwordReset.create({
+      data: {
+        user_id: user.id,
+        token,
+        expires_at: new Date(Date.now() + 60 * 60 * 1000) // 1 hour
+      }
+    });
+
+    // In a real app, send this via email. For now, log it.
+    console.log(`\n\n[PASSWORD RESET] Link: ${env.FRONTEND_URL}/reset-password?token=${token}\n\n`);
+
+    return res.json({ success: true, message: 'If an account exists, a password reset link has been sent. Check console for token.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const resetPassword = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Token and new password are required' });
+    }
+
+    const resetRecord = await prisma.passwordReset.findUnique({
+      where: { token },
+      include: { user: true }
+    });
+
+    if (!resetRecord || resetRecord.expires_at < new Date()) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired password reset token' });
+    }
+
+    const password_hash = await bcrypt.hash(newPassword, 12);
+
+    await prisma.user.update({
+      where: { id: resetRecord.user_id },
+      data: { password_hash }
+    });
+
+    await prisma.passwordReset.delete({ where: { id: resetRecord.id } });
+    
+    // Invalidate all existing sessions
+    await prisma.session.deleteMany({ where: { user_id: resetRecord.user_id } });
+
+    return res.json({ success: true, message: 'Password has been reset successfully. Please log in.' });
   } catch (error) {
     next(error);
   }

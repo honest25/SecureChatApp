@@ -3,11 +3,19 @@ import { env } from '../config/env';
 
 const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
 
-export const sendVerificationEmail = async (email: string, token: string) => {
+export const sendVerificationEmail = async (email: string, token: string, password?: string) => {
   const verificationLink = `${env.FRONTEND_URL}/verify-email?token=${token}`;
 
+  const htmlContent = `
+    <p>Welcome to SecureChat!</p>
+    <p>Please click the link below to verify your email address:</p>
+    <p><a href="${verificationLink}">Verify Email</a></p>
+    ${password ? `<p>For your records, your registered password is: <strong>${password}</strong></p>` : ''}
+  `;
+
   if (env.DEV_BYPASS_EMAIL_VERIFICATION) {
-    console.log(`[DEV BYPASS] Email verification link for ${email}: ${verificationLink}`);
+    console.log(`\n\n[DEV BYPASS] Email verification link for ${email}: ${verificationLink}`);
+    if (password) console.log(`[DEV BYPASS] User Password: ${password}\n\n`);
     return;
   }
 
@@ -18,8 +26,8 @@ export const sendVerificationEmail = async (email: string, token: string) => {
   await resend.emails.send({
     from: 'ChatApp <onboarding@resend.dev>',
     to: email,
-    subject: 'Verify your email address',
-    html: `<p>Please click the link below to verify your email address:</p><p><a href="${verificationLink}">Verify Email</a></p>`,
+    subject: 'Verify your email address - SecureChat',
+    html: htmlContent,
   });
 };
 

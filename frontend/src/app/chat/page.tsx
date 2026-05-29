@@ -9,6 +9,7 @@ import { useSocket } from '@/hooks/useSocket';
 
 import NearbyRadar from '@/components/location/NearbyRadar';
 import GPSSimulator from '@/components/location/GPSSimulator';
+import TopNavbar from '@/components/layout/TopNavbar';
 
 export default function ChatLayout() {
   const router = useRouter();
@@ -37,8 +38,9 @@ export default function ChatLayout() {
   }
 
   return (
-    <div className="h-screen w-full bg-gray-950 flex overflow-hidden font-sans">
-      <div className="flex-1 flex max-w-[1600px] mx-auto bg-gray-900 shadow-2xl overflow-hidden w-full h-full">
+    <div className="h-screen w-full bg-gray-950 flex flex-col font-sans">
+      <TopNavbar />
+      <div className="flex-1 flex max-w-[1600px] mx-auto bg-gray-900 shadow-2xl overflow-hidden w-full">
         <Sidebar />
         <ChatArea />
         {/* Right Sidebar: Location Tracking System */}

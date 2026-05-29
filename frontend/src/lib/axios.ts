@@ -1,8 +1,26 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
 
+const getBaseUrl = () => {
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    
+    // Check if it's a local IP address (e.g., 192.168.x.x, 10.x.x.x, 172.x.x.x)
+    const isLocalNetworkIP = /^(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/.test(hostname);
+    if (isLocalNetworkIP) {
+      return `http://${hostname}:5000`;
+    }
+
+    // Check if it's a production Vercel deployment
+    if (hostname.includes('vercel.app')) {
+      return 'https://securechatapp-backend.onrender.com';
+    }
+  }
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+};
+
 export const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000',
+  baseURL: getBaseUrl(),
   withCredentials: true, // Important for sending HttpOnly cookies
 });
 

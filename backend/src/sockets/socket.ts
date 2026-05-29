@@ -14,7 +14,14 @@ let io: Server;
 export const setupSocket = (httpServer: HttpServer) => {
   io = new Server(httpServer, {
     cors: {
-      origin: env.FRONTEND_URL,
+      origin: function (origin: string | undefined, callback: (err: Error | null, origin?: boolean) => void) {
+        const allowedOrigins = [env.FRONTEND_URL, 'http://localhost:3000', 'http://192.168.1.35:3000', 'http://127.0.0.1:3000'];
+        if (!origin || allowedOrigins.includes(origin) || origin.endsWith('vercel.app')) {
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'));
+        }
+      },
       credentials: true,
       methods: ["GET", "POST"]
     }
