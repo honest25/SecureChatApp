@@ -40,7 +40,7 @@ export default function Register() {
       const res = await api.post('/auth/register', formData);
       if (res.data.success) {
         setSuccessMsg(res.data.message);
-        setTimeout(() => router.push('/verify-email'), 3000);
+        setTimeout(() => router.push('/login'), 3000);
       }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string; errors?: { message: string }[] } } };

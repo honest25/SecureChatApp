@@ -60,7 +60,7 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
       },
     });
 
-    const token = Math.floor(100000 + Math.random() * 900000).toString();
+    const token = crypto.randomBytes(32).toString('hex');
     await prisma.verificationToken.create({
       data: {
         user_id: user.id,
@@ -261,43 +261,15 @@ export const verifyEmail = async (req: Request, res: Response, next: NextFunctio
     }
 
     // Verify user and send welcome email
-    const updatedUser = await prisma.user.update({
+    await prisma.user.update({
       where: { id: verificationRecord.user_id },
       data: { is_verified: true },
     });
 
     await prisma.verificationToken.delete({ where: { id: verificationRecord.id } });
-    await sendWelcomeEmail(updatedUser.email, updatedUser.name);
+    await sendWelcomeEmail(verificationRecord.user.email, verificationRecord.user.name);
 
-    const { accessToken, refreshToken } = generateTokens(updatedUser.id);
-
-    // Save session for Device/Session Tracking
-    await prisma.session.create({
-      data: {
-        user_id: updatedUser.id,
-        refresh_token: refreshToken,
-        device_info: req.headers['user-agent'] || 'Unknown Device',
-        ip_address: req.ip,
-        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-      }
-    });
-
-    setCookies(res, accessToken, refreshToken);
-
-    return res.json({ 
-      success: true, 
-      message: 'Email verified successfully! You are now logged in.',
-      accessToken,
-      refreshToken,
-      user: {
-        id: updatedUser.id,
-        name: updatedUser.name,
-        email: updatedUser.email,
-        profile_pic_url: updatedUser.profile_pic_url,
-        hostel_name: updatedUser.hostel_name,
-        room_number: updatedUser.room_number
-      }
-    });
+    return res.json({ success: true, message: 'Email verified successfully! You can now sign in.' });
   } catch (error) {
     next(error);
   }
