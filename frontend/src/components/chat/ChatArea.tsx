@@ -7,6 +7,7 @@ import { api } from '@/lib/axios';
 import { Send, Image as ImageIcon, Paperclip } from 'lucide-react';
 import { format } from 'date-fns';
 import { useSocket } from '@/hooks/useSocket';
+import UserProfileModal from '@/components/profile/UserProfileModal';
 
 export default function ChatArea() {
   const { activeChatId, chats, messages, setMessages, typingStatus } = useChatStore();
@@ -83,6 +84,8 @@ export default function ChatArea() {
     if (activeChat) emitStopTyping(activeChatId, activeChat.otherUser.id);
   };
 
+  const [viewProfileUserId, setViewProfileUserId] = useState<string | null>(null);
+
   if (!activeChat) {
     return (
       <div className="flex-1 bg-gray-900 flex flex-col items-center justify-center text-gray-500">
@@ -100,14 +103,25 @@ export default function ChatArea() {
 
   return (
     <div className="flex-1 flex flex-col bg-gray-900 relative h-full">
+      {/* Profile Modal */}
+      {viewProfileUserId && (
+        <UserProfileModal 
+          userId={viewProfileUserId} 
+          onClose={() => setViewProfileUserId(null)} 
+        />
+      )}
+
       {/* Header */}
-      <div className="h-16 px-6 bg-gray-800 border-b border-gray-700 flex items-center justify-between z-10 shadow-sm">
-        <div className="flex items-center">
-          <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold mr-4">
+      <div className="h-16 px-6 bg-gray-800 border-b border-gray-700 flex items-center justify-between z-10 shadow-sm hover:bg-gray-750 transition-colors cursor-pointer" onClick={() => setViewProfileUserId(activeChat.otherUser.id)}>
+        <div className="flex items-center w-full">
+          <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold mr-4 shadow-md">
             {activeChat.otherUser.name.charAt(0).toUpperCase()}
           </div>
-          <div>
-            <h2 className="text-white font-medium">{activeChat.otherUser.name}</h2>
+          <div className="flex-1">
+            <h2 className="text-white font-medium flex items-center gap-2">
+              {activeChat.otherUser.name}
+              <span className="text-[10px] bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full border border-gray-600">View Profile</span>
+            </h2>
             <p className="text-xs text-gray-400">
               {activeChat.otherUser.is_online ? 'Online' : 'Offline'}
             </p>

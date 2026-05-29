@@ -6,6 +6,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Compass } from 'lucide-react';
 import { api } from '@/lib/axios';
+import UserProfileModal from '@/components/profile/UserProfileModal';
 
 // Create a custom icon for the current user
 const myIcon = new L.DivIcon({
@@ -67,6 +68,7 @@ interface LiveMapProps {
 export default function LiveMap({ myLat, myLon, nearbyUsers }: LiveMapProps) {
   const [rooms, setRooms] = useState<RoomPolygon[]>([]);
   const [activeRoomIds, setActiveRoomIds] = useState<Set<string>>(new Set());
+  const [viewProfileUserId, setViewProfileUserId] = useState<string | null>(null);
 
   // Fetch Rooms to draw floorplan polygons
   useEffect(() => {
@@ -192,12 +194,25 @@ export default function LiveMap({ myLat, myLon, nearbyUsers }: LiveMapProps) {
                       In {user.roomName} ({user.roomNumber})
                     </div>
                   )}
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setViewProfileUserId(user.userId); }}
+                    className="mt-2 w-full text-xs bg-gray-700 hover:bg-gray-600 text-white py-1 rounded transition-colors"
+                  >
+                    View Profile
+                  </button>
                 </div>
               </Popup>
             </Marker>
           );
         })}
       </MapContainer>
+      
+      {viewProfileUserId && (
+        <UserProfileModal 
+          userId={viewProfileUserId} 
+          onClose={() => setViewProfileUserId(null)} 
+        />
+      )}
       
       {/* HUD Overlays */}
       <div className="absolute top-2 left-2 z-[400] pointer-events-none">

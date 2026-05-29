@@ -66,9 +66,34 @@ export const searchUsers = async (req: Request, res: Response, next: NextFunctio
   }
 };
 
+export const getOtherUserProfile = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        gender: true,
+        room_number: true,
+        hostel_name: true,
+        profile_pic_url: true,
+        is_online: true,
+        last_seen: true,
+      }
+    });
+
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    res.json({ success: true, user });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const router = Router();
 router.use(requireAuth);
 router.get('/profile', getProfile);
+router.get('/profile/:id', getOtherUserProfile);
 router.put('/update', updateProfile);
 router.get('/search', searchUsers);
 
