@@ -10,8 +10,8 @@ export const getChats = async (req: Request, res: Response, next: NextFunction) 
     const chats = await prisma.chat.findMany({
       where: { OR: [{ user1_id: userId }, { user2_id: userId }] },
       include: {
-        user1: { select: { id: true, name: true, profile_pic_url: true, is_online: true, hostel_name: true, live_presence: { include: { room: true } } } },
-        user2: { select: { id: true, name: true, profile_pic_url: true, is_online: true, hostel_name: true, live_presence: { include: { room: true } } } },
+        user1: { select: { id: true, name: true, profile_pic_url: true, is_online: true, hostel_name: true, presence: { include: { room: true } } } },
+        user2: { select: { id: true, name: true, profile_pic_url: true, is_online: true, hostel_name: true, presence: { include: { room: true } } } },
         messages: {
           orderBy: { created_at: 'desc' },
           take: 1, // Get last message

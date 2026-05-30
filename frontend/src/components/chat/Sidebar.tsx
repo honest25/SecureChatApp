@@ -122,10 +122,10 @@ export default function Sidebar() {
                   <div className="flex justify-between items-baseline mb-1">
                     <h4 className="text-white font-medium truncate">{chat.otherUser.name}</h4>
                     <div className="flex items-center gap-2">
-                      {(chat as any).otherUser?.live_presence?.room ? (
+                      {(chat as any).otherUser?.presence?.room ? (
                         <span className="text-[10px] text-green-400 bg-green-900/20 px-1.5 py-0.5 rounded border border-green-800/50 flex items-center gap-0.5">
                           <MapPin className="w-2.5 h-2.5" />
-                          { (chat as any).otherUser.live_presence.room.name }
+                          { (chat as any).otherUser.presence.room.name }
                         </span>
                       ) : (chat as any).otherUser?.hostel_name ? (
                         <span className="text-[10px] text-blue-400 bg-blue-900/20 px-1.5 py-0.5 rounded border border-blue-800/50 flex items-center gap-0.5">

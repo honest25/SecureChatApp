@@ -140,10 +140,10 @@ export default function ChatArea() {
           </div>
           
           <div className="flex flex-col items-end">
-            {(activeChat as any).otherUser?.live_presence?.room ? (
+            {(activeChat as any).otherUser?.presence?.room ? (
               <span className="flex items-center gap-1 text-xs text-green-400 bg-green-900/20 px-2 py-1 rounded-md border border-green-800/50">
                 <MapPin className="w-3 h-3" />
-                In {(activeChat as any).otherUser.live_presence.room.name}
+                In {(activeChat as any).otherUser.presence.room.name}
               </span>
             ) : (activeChat as any).otherUser?.hostel_name ? (
                <span className="flex items-center gap-1 text-xs text-blue-400 bg-blue-900/20 px-2 py-1 rounded-md border border-blue-800/50">
