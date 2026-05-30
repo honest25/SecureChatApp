@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useChatStore } from '@/store/useChatStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { api } from '@/lib/axios';
-import { Search, LogOut, User as UserIcon } from 'lucide-react';
+import { Search, LogOut, User as UserIcon, MapPin } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useRouter } from 'next/navigation';
 
@@ -121,11 +121,24 @@ export default function Sidebar() {
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-baseline mb-1">
                     <h4 className="text-white font-medium truncate">{chat.otherUser.name}</h4>
-                    {chat.lastMessage && (
-                      <span className="text-xs text-gray-500">
-                        {formatDistanceToNow(new Date(chat.lastMessage.created_at), { addSuffix: true })}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {(chat as any).otherUser?.live_presence?.room ? (
+                        <span className="text-[10px] text-green-400 bg-green-900/20 px-1.5 py-0.5 rounded border border-green-800/50 flex items-center gap-0.5">
+                          <MapPin className="w-2.5 h-2.5" />
+                          { (chat as any).otherUser.live_presence.room.name }
+                        </span>
+                      ) : (chat as any).otherUser?.hostel_name ? (
+                        <span className="text-[10px] text-blue-400 bg-blue-900/20 px-1.5 py-0.5 rounded border border-blue-800/50 flex items-center gap-0.5">
+                          <MapPin className="w-2.5 h-2.5" />
+                          { (chat as any).otherUser.hostel_name }
+                        </span>
+                      ) : null}
+                      {chat.lastMessage && (
+                        <span className="text-[10px] text-gray-500">
+                          {formatDistanceToNow(new Date(chat.lastMessage.created_at), { addSuffix: true })}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <p className="text-sm text-gray-400 truncate">
                     {chat.lastMessage ? chat.lastMessage.content : 'Start a conversation'}

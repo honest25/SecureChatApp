@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useChatStore } from '@/store/useChatStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { api, getBaseUrl } from '@/lib/axios';
-import { Send, Image as ImageIcon, Paperclip, Smile } from 'lucide-react';
+import { Send, Image as ImageIcon, Paperclip, Smile, MapPin } from 'lucide-react';
 import { format } from 'date-fns';
 import { useSocket } from '@/hooks/useSocket';
 import UserProfileModal from '@/components/profile/UserProfileModal';
@@ -123,18 +123,34 @@ export default function ChatArea() {
 
       {/* Header */}
       <div className="h-16 px-6 bg-gray-800 border-b border-gray-700 flex items-center justify-between z-10 shadow-sm hover:bg-gray-750 transition-colors cursor-pointer" onClick={() => setViewProfileUserId(activeChat.otherUser.id)}>
-        <div className="flex items-center w-full">
-          <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold mr-4 shadow-md">
-            {activeChat.otherUser.name.charAt(0).toUpperCase()}
+        <div className="flex items-center w-full justify-between">
+          <div className="flex items-center">
+            <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold mr-4 shadow-md">
+              {activeChat.otherUser.name.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <h2 className="text-white font-medium flex items-center gap-2">
+                {activeChat.otherUser.name}
+                <span className="text-[10px] bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full border border-gray-600 hidden sm:inline-block">View Profile</span>
+              </h2>
+              <p className="text-xs text-gray-400">
+                {activeChat.otherUser.is_online ? 'Online' : 'Offline'}
+              </p>
+            </div>
           </div>
-          <div className="flex-1">
-            <h2 className="text-white font-medium flex items-center gap-2">
-              {activeChat.otherUser.name}
-              <span className="text-[10px] bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full border border-gray-600">View Profile</span>
-            </h2>
-            <p className="text-xs text-gray-400">
-              {activeChat.otherUser.is_online ? 'Online' : 'Offline'}
-            </p>
+          
+          <div className="flex flex-col items-end">
+            {(activeChat as any).otherUser?.live_presence?.room ? (
+              <span className="flex items-center gap-1 text-xs text-green-400 bg-green-900/20 px-2 py-1 rounded-md border border-green-800/50">
+                <MapPin className="w-3 h-3" />
+                In {(activeChat as any).otherUser.live_presence.room.name}
+              </span>
+            ) : (activeChat as any).otherUser?.hostel_name ? (
+               <span className="flex items-center gap-1 text-xs text-blue-400 bg-blue-900/20 px-2 py-1 rounded-md border border-blue-800/50">
+                <MapPin className="w-3 h-3" />
+                At {(activeChat as any).otherUser.hostel_name}
+              </span>
+            ) : null}
           </div>
         </div>
       </div>
