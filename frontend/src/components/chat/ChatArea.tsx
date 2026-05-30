@@ -8,7 +8,8 @@ import { Send, Image as ImageIcon, Paperclip, Smile } from 'lucide-react';
 import { format } from 'date-fns';
 import { useSocket } from '@/hooks/useSocket';
 import UserProfileModal from '@/components/profile/UserProfileModal';
-import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
+
+const COMMON_EMOJIS = ['😀', '😂', '🤣', '😊', '😍', '🙏', '👍', '👎', '❤️', '🔥', '🎉', '👏', '😭', '🥺', '🤔', '😎', '🙌', '✨'];
 
 export default function ChatArea() {
   const { activeChatId, chats, messages, setMessages, typingStatus } = useChatStore();
@@ -57,8 +58,8 @@ export default function ChatArea() {
     }
   };
 
-  const onEmojiClick = (emojiData: EmojiClickData) => {
-    setInputText((prev) => prev + emojiData.emoji);
+  const onEmojiClick = (emoji: string) => {
+    setInputText((prev) => prev + emoji);
   };
 
   const handleSend = async (e: React.FormEvent) => {
@@ -204,8 +205,17 @@ export default function ChatArea() {
       {/* Input Area */}
       <div className="p-4 bg-gray-800 border-t border-gray-700 relative">
         {showEmojiPicker && (
-          <div className="absolute bottom-full left-4 mb-2 z-50">
-            <EmojiPicker onEmojiClick={onEmojiClick} theme="dark" />
+          <div className="absolute bottom-full left-4 mb-2 z-50 bg-gray-800 border border-gray-700 p-2 rounded-lg shadow-lg flex flex-wrap gap-2 w-64">
+            {COMMON_EMOJIS.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                className="text-xl p-1 hover:bg-gray-700 rounded transition"
+                onClick={() => onEmojiClick(emoji)}
+              >
+                {emoji}
+              </button>
+            ))}
           </div>
         )}
         
