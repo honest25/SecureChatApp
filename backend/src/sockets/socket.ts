@@ -189,6 +189,8 @@ export const setupSocket = (httpServer: HttpServer) => {
           }).filter(u => u.userId);
 
           io.to(userId).emit('radar_bulk_sync', syncData);
+        } else {
+          io.to(userId).emit('radar_bulk_sync', []);
         }
 
         // Echo my own roomId back so my simulator/radar knows my calculated room

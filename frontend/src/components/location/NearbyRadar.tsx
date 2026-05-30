@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useSocket } from '@/hooks/useSocket';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Compass, Navigation, MapPin, Map as MapIcon, List as ListIcon } from 'lucide-react';
@@ -36,6 +36,13 @@ export default function NearbyRadar() {
   const user = useAuthStore(state => state.user);
   const { socket } = useSocket();
 
+  const myLocationRef = useRef<{ lat: number, lon: number, roomId: string | null } | null>(null);
+
+  // Keep ref in sync
+  useEffect(() => {
+    myLocationRef.current = myLocation;
+  }, [myLocation]);
+
   // Watch own location
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -43,24 +50,48 @@ export default function NearbyRadar() {
       return;
     }
 
+    const emitLocation = (coords: { lat: number, lon: number }) => {
+      if (socket && user?.hostel_name) {
+        socket.emit('update_gps_location', { ...coords, hostelName: user.hostel_name });
+      }
+    };
+
+    // Fast initial lock
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const coords = { lat: position.coords.latitude, lon: position.coords.longitude };
+        setHasGPSLock(true);
+        setMyLocation(prev => ({ ...coords, roomId: prev?.roomId || null }));
+        emitLocation(coords);
+      },
+      (err) => console.warn('Initial GPS lock failed:', err),
+      { enableHighAccuracy: true, timeout: 5000, maximumAge: 10000 }
+    );
+
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
         const coords = { lat: position.coords.latitude, lon: position.coords.longitude };
         setHasGPSLock(true);
         setMyLocation(prev => ({ ...coords, roomId: prev?.roomId || null }));
-        
-        // Emit raw GPS securely to backend. Backend handles distances.
-        if (socket && user?.hostel_name) {
-          socket.emit('update_gps_location', { ...coords, hostelName: user.hostel_name });
-        }
+        emitLocation(coords);
       },
       (err) => {
         setError(`GPS Error: ${err.message}`);
       },
-      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
 
-    return () => navigator.geolocation.clearWatch(watchId);
+    // Fallback heartbeat to keep presence fresh even if stationary
+    const heartbeat = setInterval(() => {
+      if (myLocationRef.current) {
+        emitLocation({ lat: myLocationRef.current.lat, lon: myLocationRef.current.lon });
+      }
+    }, 10000);
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+      clearInterval(heartbeat);
+    };
   }, [socket, user]);
 
   // Listen for secure distance updates
@@ -75,8 +106,9 @@ export default function NearbyRadar() {
     };
 
     const handleBulkSync = (users: RadarUser[]) => {
-      setNearbyUsers((prev) => {
-        const newMap = new Map(prev);
+      // Overwrite entirely to remove stale users
+      setNearbyUsers(() => {
+        const newMap = new Map<string, RadarUser>();
         users.forEach(u => newMap.set(u.userId, u));
         return newMap;
       });
