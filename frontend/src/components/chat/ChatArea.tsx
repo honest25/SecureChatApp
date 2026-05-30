@@ -4,10 +4,11 @@ import { useEffect, useState, useRef } from 'react';
 import { useChatStore } from '@/store/useChatStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { api, getBaseUrl } from '@/lib/axios';
-import { Send, Image as ImageIcon, Paperclip } from 'lucide-react';
+import { Send, Image as ImageIcon, Paperclip, Smile } from 'lucide-react';
 import { format } from 'date-fns';
 import { useSocket } from '@/hooks/useSocket';
 import UserProfileModal from '@/components/profile/UserProfileModal';
+import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
 
 export default function ChatArea() {
   const { activeChatId, chats, messages, setMessages, typingStatus } = useChatStore();
@@ -15,6 +16,7 @@ export default function ChatArea() {
   const { sendMessage, joinChat, emitTyping, emitStopTyping } = useSocket();
   const [inputText, setInputText] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -55,6 +57,10 @@ export default function ChatArea() {
     }
   };
 
+  const onEmojiClick = (emojiData: EmojiClickData) => {
+    setInputText((prev) => prev + emojiData.emoji);
+  };
+
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputText.trim() && !file) return;
@@ -83,6 +89,7 @@ export default function ChatArea() {
     sendMessage(activeChatId, inputText, type, mediaUrl, fileName);
     setInputText('');
     setFile(null);
+    setShowEmojiPicker(false);
     if (activeChat) emitStopTyping(activeChatId, activeChat.otherUser.id);
   };
 
@@ -132,7 +139,7 @@ export default function ChatArea() {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      <div className="flex-1 overflow-y-auto p-6 space-y-4 relative" onClick={() => setShowEmojiPicker(false)}>
         <div className="text-center text-xs text-gray-500 my-4 bg-gray-800/50 py-2 rounded-lg mx-auto w-fit px-4 border border-gray-700">
           Messages in this chat will auto-delete after 7 hours for security.
         </div>
@@ -174,7 +181,7 @@ export default function ChatArea() {
                     )}
                   </div>
                 )}
-                {msg.content && <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>}
+                {msg.content && <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{msg.content}</p>}
                 <div className={`text-[10px] mt-1 text-right ${isMine ? 'text-blue-200' : 'text-gray-500'}`}>
                   {format(new Date(msg.created_at), 'HH:mm')}
                 </div>
@@ -195,16 +202,31 @@ export default function ChatArea() {
       </div>
 
       {/* Input Area */}
-      <div className="p-4 bg-gray-800 border-t border-gray-700">
+      <div className="p-4 bg-gray-800 border-t border-gray-700 relative">
+        {showEmojiPicker && (
+          <div className="absolute bottom-full left-4 mb-2 z-50">
+            <EmojiPicker onEmojiClick={onEmojiClick} theme="dark" />
+          </div>
+        )}
+        
         {file && (
           <div className="mb-2 p-2 bg-gray-700 rounded-lg text-sm text-gray-300 flex items-center justify-between w-fit">
             <span className="truncate max-w-xs">{file.name}</span>
             <button onClick={() => setFile(null)} className="ml-4 text-red-400 hover:text-red-300">✕</button>
           </div>
         )}
+        
         <form onSubmit={handleSend} className="flex items-end space-x-2">
-          <div className="flex-1 bg-gray-700 rounded-2xl flex items-center border border-gray-600 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all overflow-hidden">
-            <label className="p-3 text-gray-400 hover:text-white cursor-pointer transition" title="Attach file, image, or document">
+          <div className="flex-1 bg-gray-700 rounded-2xl flex items-center border border-gray-600 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all overflow-visible">
+            <button
+              type="button"
+              className="p-3 text-gray-400 hover:text-white transition"
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              title="Add Emoji"
+            >
+              <Smile className="w-5 h-5" />
+            </button>
+            <label className="p-3 pl-0 text-gray-400 hover:text-white cursor-pointer transition" title="Attach file, image, or document">
               <Paperclip className="w-5 h-5" />
               <input type="file" className="hidden" accept="*/*" onChange={(e) => setFile(e.target.files?.[0] || null)} />
             </label>
@@ -212,6 +234,7 @@ export default function ChatArea() {
               type="text"
               value={inputText}
               onChange={handleTyping}
+              onFocus={() => setShowEmojiPicker(false)}
               placeholder="Type a message..."
               className="flex-1 bg-transparent text-white focus:outline-none py-3 pr-4 placeholder-gray-500"
             />
